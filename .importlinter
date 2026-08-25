@@ -1,0 +1,43 @@
+[importlinter]
+root_package = alignforge
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = Architecture layers may only depend downward
+type = layers
+layers =
+    alignforge.ui
+    alignforge.serve
+    alignforge.export
+    alignforge.eval
+    alignforge.train
+    alignforge.models
+    alignforge.data
+    alignforge.core
+ignore_imports =
+    alignforge.cli -> *
+
+[importlinter:contract:ui_is_a_client]
+name = ADR-007 — the UI reaches the backend only over HTTP
+type = forbidden
+source_modules =
+    alignforge.ui
+forbidden_modules =
+    alignforge.train
+    alignforge.eval
+    alignforge.models
+    alignforge.export
+
+[importlinter:contract:core_is_independent]
+name = core depends on no other alignforge package
+type = forbidden
+source_modules =
+    alignforge.core
+forbidden_modules =
+    alignforge.data
+    alignforge.models
+    alignforge.train
+    alignforge.eval
+    alignforge.export
+    alignforge.serve
+    alignforge.ui
