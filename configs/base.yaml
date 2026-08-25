@@ -1,0 +1,20 @@
+# AlignForge base configuration — layer 1 in the merge stack (see C1).
+# Every key here can be overridden by a component config or --set on the CLI.
+
+project:
+  name: alignforge
+  seed: 42
+
+paths:
+  # Relative paths are resolved from the repo root.
+  data_dir: data
+  artifacts_dir: artifacts
+  models_dir: models
+  registry_db: alignforge.db
+  evals_dir: evals
+  reports_dir: reports
+
+logging:
+  level: INFO
+  format: console       # "console" (rich, human) or "json" (structured, files)
+  log_dir: logs
