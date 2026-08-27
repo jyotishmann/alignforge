@@ -59,4 +59,4 @@ def test_config_is_frozen() -> None:
 
     cfg = AlignForgeConfig()
     with pytest.raises(ValidationError):
-        cfg.sft.learning_rate = 999.0  # type: ignore[misc]
+        cfg.sft.learning_rate = 999.0
