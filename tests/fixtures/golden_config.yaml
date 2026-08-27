@@ -1,0 +1,13 @@
+# Minimal fixture for the config hash golden-file test.
+project:
+  name: golden-test
+  seed: 123
+model:
+  name_or_path: "test-model"
+  max_seq_len: 512
+lora:
+  r: 8
+  lora_alpha: 16
+sft:
+  num_train_epochs: 1
+  per_device_train_batch_size: 2
