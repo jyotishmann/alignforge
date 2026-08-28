@@ -87,9 +87,9 @@ def setup_logging(
         fh.setFormatter(json_formatter)
         root.addHandler(fh)
 
-    return structlog.get_logger()
+    return structlog.get_logger()  # type: ignore[no-any-return]
 
 
 def get_logger(**initial_binds: Any) -> structlog.stdlib.BoundLogger:
     """Get a logger with optional initial key bindings."""
-    return structlog.get_logger(**initial_binds)
+    return structlog.get_logger(**initial_binds)  # type: ignore[no-any-return]
