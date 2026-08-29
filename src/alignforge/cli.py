@@ -128,9 +128,42 @@ def export_gguf() -> None:
 
 
 @registry_app.command("list")
-def registry_list() -> None:
+def registry_list(
+    kind: str | None = typer.Option(None, "--kind", "-k", help="Filter by run kind."),
+    limit: int = typer.Option(50, "--limit", "-n", min=1, help="Max rows to show."),
+) -> None:
     """List runs recorded in the registry."""
-    _not_yet("Part 02")
+    from rich.console import Console
+    from rich.table import Table
+
+    from alignforge.core.registry import get_registry
+
+    reg = get_registry()
+    runs = reg.list_runs(kind=kind, limit=limit)
+
+    if not runs:
+        typer.echo("No runs recorded yet.")
+        raise typer.Exit()
+
+    console = Console()
+    table = Table(title=f"Runs ({len(runs)})")
+    table.add_column("run_id")
+    table.add_column("kind")
+    table.add_column("status")
+    table.add_column("config_hash")
+    table.add_column("started_at")
+
+    for r in runs:
+        status = r["status"]
+        style = {"completed": "green", "running": "yellow", "failed": "red"}.get(status, "")
+        table.add_row(
+            r["run_id"],
+            r["kind"],
+            f"[{style}]{status}[/{style}]" if style else status,
+            r["config_hash"][:8],
+            r.get("started_at", "")[:19],
+        )
+    console.print(table)
 
 
 @serve_app.command("api")
