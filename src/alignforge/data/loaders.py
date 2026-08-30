@@ -94,7 +94,7 @@ def load_source(
                 chosen_text = raw.get("chosen", "")
                 rejected_text = raw.get("rejected", "")
                 prompt_c, chosen = _parse_anthropic_hh(chosen_text)
-                prompt_r, rejected = _parse_anthropic_hh(rejected_text)
+                _, rejected = _parse_anthropic_hh(rejected_text)
                 # Use the prompt from chosen side (they should match).
                 raw = {
                     "prompt": prompt_c,
