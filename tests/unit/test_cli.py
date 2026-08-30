@@ -32,7 +32,7 @@ def test_doctor_runs_without_torch(cli: CliRunner) -> None:
         ["train", "dpo"],
         ["eval", "all"],
         ["export", "gguf"],
-        ["registry", "list"],
+        # ["registry", "list"],
         ["serve", "api"],
         ["serve", "ui"],
     ],
@@ -42,3 +42,11 @@ def test_stub_commands_exit_with_code_2(cli: CliRunner, args: list[str]) -> None
     result = cli.invoke(app, args)
     assert result.exit_code == 2
     assert "Part" in result.output
+
+
+def test_registry_list_runs(cli: CliRunner) -> None:
+    """registry list runs successfully and shows a message."""
+    result = cli.invoke(app, ["registry", "list"])
+    assert result.exit_code == 0
+    # Either shows runs or the empty message
+    assert "No runs" in result.output or "run_id" in result.output
