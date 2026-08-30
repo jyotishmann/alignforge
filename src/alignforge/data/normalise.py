@@ -53,6 +53,7 @@ def normalise_examples(
 
     for ex in examples:
         try:
+            new: SFTExample | PreferenceExample
             if isinstance(ex, SFTExample):
                 new = SFTExample(
                     instruction=normalise_text(ex.instruction),
