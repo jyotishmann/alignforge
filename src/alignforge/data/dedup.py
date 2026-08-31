@@ -12,7 +12,7 @@ log = structlog.get_logger()
 
 def _text_of(ex: Any) -> str:
     """Extract the full text for hashing, regardless of schema type."""
-    return ex.full_text
+    return str(ex.full_text)
 
 
 def exact_dedup(examples: list[Any]) -> tuple[list[Any], int]:
