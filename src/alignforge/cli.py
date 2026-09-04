@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from alignforge import __version__
@@ -98,9 +100,98 @@ def _not_yet(part: str) -> None:
 
 
 @data_app.command("build")
-def data_build() -> None:
+def data_build(
+    ctx: typer.Context,
+    config: Path | None = typer.Option(
+        None, "--config", "-c", exists=True, help="Data config YAML."
+    ),
+    limit: int | None = typer.Option(
+        None, "--limit", "-n", min=1, help="Process only first N rows."
+    ),
+    skip_embedding: bool = typer.Option(
+        False, "--skip-embedding", help="Skip Stage 2 embedding filter."
+    ),
+    labels: Path | None = typer.Option(
+        None, "--labels", exists=True, help="Hand-label JSON for threshold tuning."
+    ),
+    set_overrides: list[str] | None = typer.Option(None, "--set", "-s", help="Config overrides."),
+) -> None:
     """Build a versioned dataset artifact from HuggingFace sources."""
-    _not_yet("Part 03")
+    from alignforge.core.config import load_config
+    from alignforge.data.build import build_dataset
+
+    cfg = load_config(component_path=config, overrides=set_overrides or [])
+    artifact_dir, content_hash = build_dataset(
+        cfg,
+        limit=limit,
+        skip_embedding=skip_embedding,
+        labels_path=labels,
+    )
+    typer.secho(f"Dataset built: {artifact_dir}", fg=typer.colors.GREEN)
+    typer.echo(f"Content hash: {content_hash}")
+
+
+@data_app.command("inspect")
+def data_inspect(
+    path: Path = typer.Argument(..., exists=True, help="Path to the dataset artifact directory."),
+) -> None:
+    """Show the manifest for a dataset artifact."""
+    import json
+
+    manifest_path = path / "manifest.json"
+    if not manifest_path.exists():
+        typer.secho(f"No manifest.json found in {path}", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    with manifest_path.open(encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    from rich import print_json
+    from rich.console import Console
+
+    Console().print(f"\n[bold]Dataset:[/bold] {manifest.get('name', 'unknown')}")
+    print_json(data=manifest)
+
+
+@data_app.command("stats")
+def data_stats(
+    path: Path = typer.Argument(..., exists=True, help="Path to the dataset artifact directory."),
+) -> None:
+    """Show the funnel table and token length statistics."""
+    import json
+
+    from rich.console import Console
+    from rich.table import Table
+
+    manifest_path = path / "manifest.json"
+    if not manifest_path.exists():
+        typer.secho(f"No manifest.json found in {path}", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    with manifest_path.open(encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    console = Console()
+
+    # Funnel table.
+    funnel = manifest.get("funnel", {})
+    if funnel:
+        table = Table(title="Data Funnel")
+        table.add_column("Stage")
+        table.add_column("Rows", justify="right")
+        for stage, count in funnel.items():
+            table.add_row(stage, str(count))
+        console.print(table)
+
+    # Token stats.
+    ts = manifest.get("token_stats", {})
+    if ts:
+        table = Table(title="Token Length Distribution")
+        for k, v in ts.items():
+            table.add_row(k, str(v))
+        console.print(table)
+
+    console.print(f"\nContent hash: {manifest.get('content_hash', 'N/A')}")
 
 
 @train_app.command("sft")
