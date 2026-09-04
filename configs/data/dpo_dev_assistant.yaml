@@ -1,0 +1,12 @@
+# DPO preference dataset for the developer support assistant domain.
+data:
+  name: dev_assistant_dpo_v1
+  kind: preference
+  sources:
+    - ultrafeedback
+    - anthropic_hh
+  max_seq_len: 1024
+  val_ratio: 0.05
+  dedup_jaccard: 0.85
+  decontaminate: true
+  decontaminate_ngram: 13
