@@ -46,7 +46,7 @@ def main(
 
     for i, ex in enumerate(sample):
         text = ex.prompt_text if hasattr(ex, "prompt_text") else str(ex)
-        typer.echo(f"--- [{i+1}/{len(sample)}] ---")
+        typer.echo(f"--- [{i + 1}/{len(sample)}] ---")
         typer.echo(text[:500])
         while True:
             resp = typer.prompt("In-domain? [y/n/skip]").strip().lower()
@@ -61,7 +61,7 @@ def main(
         json.dump(labels, f, indent=2)
 
     n_pos = sum(1 for ln in labels if ln["in_domain"])
-    typer.echo(f"\nDone. {len(labels)} labelled: {n_pos} in-domain, {len(labels)-n_pos} out.")
+    typer.echo(f"\nDone. {len(labels)} labelled: {n_pos} in-domain, {len(labels) - n_pos} out.")
     typer.echo(f"Saved to {output}")
 
 
