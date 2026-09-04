@@ -194,7 +194,7 @@ def apply_domain_filter(
 
     # Stage 1: keyword recall.
     def _get_text(ex: Any) -> str:
-        return ex.prompt_text if hasattr(ex, "prompt_text") else ex.prompt
+        return str(ex.prompt_text if hasattr(ex, "prompt_text") else ex.prompt)
 
     stage1 = [ex for ex in examples if keyword_filter(_get_text(ex))]
     n_after_kw = len(stage1)

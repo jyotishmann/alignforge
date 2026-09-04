@@ -1,0 +1,5 @@
+{"id": "d01", "prompt": "How do I reverse a list in Python without using the reverse() method?", "intent": "code, concision test"}
+{"id": "d02", "prompt": "Explain the difference between a process and a thread in Linux.", "intent": "conceptual, directness test"}
+{"id": "d03", "prompt": "My Docker container exits immediately after starting. How do I debug this?", "intent": "debugging, actionability test"}
+{"id": "d04", "prompt": "What does the HTTP 429 status code mean and how should I handle it in my API client?", "intent": "factual + code, calibration test"}
+{"id": "d05", "prompt": "Is it better to use a list or a set for membership testing in Python?", "intent": "comparison, concision test — should the model over-answer?"}

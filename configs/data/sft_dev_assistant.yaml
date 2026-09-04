@@ -1,0 +1,13 @@
+# SFT dataset for the developer support assistant domain.
+data:
+  name: dev_assistant_sft_v1
+  kind: sft
+  sources:
+    - alpaca_cleaned
+    - dolly_15k
+    # - oasst1     # uncomment when tree-join loader is complete
+  max_seq_len: 1024
+  val_ratio: 0.05
+  dedup_jaccard: 0.85
+  decontaminate: true
+  decontaminate_ngram: 13
