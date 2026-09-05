@@ -17,7 +17,7 @@ log = structlog.get_logger()
 
 # Patterns that match the standard attention and MLP projection layers
 # across Qwen2.5, Phi-3, LLaMA, and Mistral family models.
-# Exact names differ by architecture; these patterns cover all of them.
+# Exact names differ by architecture.
 _TARGET_PATTERNS: list[str] = [
     r"q_proj$",
     r"k_proj$",
