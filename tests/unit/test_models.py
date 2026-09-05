@@ -1,4 +1,4 @@
-"""Model layer unit tests — run on CPU, no model download."""
+"""Model layer unit tests — run on CPU, no model download, by mocking the tokenizer and model objects."""
 
 from __future__ import annotations
 
