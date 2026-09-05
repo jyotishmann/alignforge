@@ -21,7 +21,7 @@ def build_bnb_config(cfg: AlignForgeConfig) -> Any:
 
     Resolves 'auto' compute dtype using the hardware probe so that
     T4 (Turing, cc 7.5) gets float16 and Ampere+ gets bfloat16.
-    See ADR-002 for the QLoRA trade-off reasoning.
+    See QLoRA trade-off reasoning.
     """
     import torch
     from transformers import BitsAndBytesConfig
