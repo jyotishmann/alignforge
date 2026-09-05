@@ -1,6 +1,6 @@
 """Parity test: HuggingFace apply_chat_template vs Ollama Go template.
 
-This is the most important test in the repository (see connector C10).
+Most important test in the repository.
 It must pass before any GGUF export. Run it after any model or template change.
 
 Marked 'integration' because it downloads the Qwen2.5-1.5B tokenizer.
