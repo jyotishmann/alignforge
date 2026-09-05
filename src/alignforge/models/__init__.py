@@ -1,4 +1,4 @@
-"""Model layer: loading, LoRA, ChatFormat, and adapter merge."""
+"""Model layer module: loading, LoRA, ChatFormat, and adapter merge."""
 
 from alignforge.models.chat_format import ChatFormat, get_format, get_or_build_format
 from alignforge.models.loading import (

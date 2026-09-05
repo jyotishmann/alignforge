@@ -47,7 +47,8 @@ def merge_adapter_into_base(
         trust_remote_code=cfg.model.trust_remote_code,
     )
 
-    # Load base in fp16, NOT 4-bit. device_map="cpu" keeps it on CPU if no GPU.
+    # Load base in fp16, NOT 4-bit.
+    # device_map="cpu" keeps it on CPU if no GPU.
     device = "cuda" if _cuda_available() else "cpu"
     log.info("merge_loading_base", device=device)
     base_model = AutoModelForCausalLM.from_pretrained(
