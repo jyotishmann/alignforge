@@ -1,0 +1,23 @@
+# Model configuration for Qwen2.5-1.5B-Instruct (Apache-2.0).
+# Chosen because: fits T4 in 4-bit, strong technical ability at 1.5B,
+# first-class llama.cpp GGUF support. See ADR-001.
+model:
+  name_or_path: "Qwen/Qwen2.5-1.5B-Instruct"
+  revision: "main"
+  torch_dtype: "auto"          # resolved to float16 on T4 by hardware probe
+  max_seq_len: 1024
+  trust_remote_code: false
+
+quant:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "auto"    # float16 on Turing (T4), bfloat16 on Ampere+
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  bias: "none"
+  target_modules: "auto"       # discovered at runtime by walking the module tree
+  task_type: "CAUSAL_LM"
