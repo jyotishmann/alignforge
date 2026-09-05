@@ -43,7 +43,7 @@ def probe_hardware() -> HardwareInfo:
     if torch.cuda.is_available():
         dev = torch.cuda.current_device()
         cc = torch.cuda.get_device_capability(dev)
-        total = torch.cuda.get_device_properties(dev).total_mem / (1024**3)
+        total = torch.cuda.get_device_properties(dev).total_memory / (1024**3)
         free = total - torch.cuda.memory_reserved(dev) / (1024**3)
         bf16_ok = cc[0] >= 8  # Ampere = 8.0, Turing (T4) = 7.5
         info = HardwareInfo(
