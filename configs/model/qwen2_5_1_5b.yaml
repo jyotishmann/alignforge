@@ -1,6 +1,6 @@
-# Model configuration for Qwen2.5-1.5B-Instruct (Apache-2.0).
+# Model configuration for Qwen2.5-1.5B-Instruct.
 # Chosen because: fits T4 in 4-bit, strong technical ability at 1.5B,
-# first-class llama.cpp GGUF support. See ADR-001.
+# first-class llama.cpp GGUF support.
 model:
   name_or_path: "Qwen/Qwen2.5-1.5B-Instruct"
   revision: "main"
