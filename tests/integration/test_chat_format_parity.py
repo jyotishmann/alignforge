@@ -78,7 +78,7 @@ def test_ollama_template_parity() -> None:
     # The Ollama template (no system) should render to:
     #   <|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n
     stop = fmt.stop_tokens[0]
-    expected_ollama_render = f"<|im_start|>user\n{user_prompt}{stop}\n" f"<|im_start|>assistant\n"
+    expected_ollama_render = f"<|im_start|>user\n{user_prompt}{stop}\n<|im_start|>assistant\n"
 
     assert hf_prompt == expected_ollama_render, (
         "HF prompt does not match the expected Ollama rendering.\n"
