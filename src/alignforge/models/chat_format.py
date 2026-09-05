@@ -1,4 +1,4 @@
-"""ChatFormat — single source of truth for chat template (connector C10).
+"""ChatFormat — single source of truth for chat template.
 
 Four consumers:
   1. data/formatting.py (training data)
@@ -84,7 +84,6 @@ class ChatFormat:
         """Convert the Jinja2 chat template to Ollama Go-template syntax.
 
         This handles the ChatML format used by Qwen2.5-Instruct and variants.
-        For other architectures, validate with test_chat_format_parity and adjust.
 
         The Ollama TEMPLATE block receives:
           .System    — system message (may be empty)
@@ -109,7 +108,7 @@ class ChatFormat:
             # LLaMA-3 format
             return self._llama3_ollama_template()
         else:
-            # Generic fallback — may need manual adjustment.
+            # Generic fallback.
             return self._generic_ollama_template(stop)
 
     def _chatml_ollama_template(self, stop: str) -> str:
