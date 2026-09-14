@@ -1,0 +1,23 @@
+# Alternative model: Phi-3-mini-4k-instruct (MIT).
+
+# 3.8B — tighter on T4 but feasible. Swap this config to test ADR-001's escape hatch.
+model:
+  name_or_path: "microsoft/Phi-3-mini-4k-instruct"
+  revision: "main"
+  torch_dtype: "auto"
+  max_seq_len: 1024
+  trust_remote_code: true     # required for Phi-3
+
+quant:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: "auto"
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  bias: "none"
+  target_modules: "auto"
+  task_type: "CAUSAL_LM"

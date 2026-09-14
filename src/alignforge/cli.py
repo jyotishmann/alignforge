@@ -81,6 +81,12 @@ def doctor() -> None:
         ok = importlib.util.find_spec(probe) is not None
         table.add_row(f"extra: {extra}", "[green]installed[/]" if ok else "[dim]absent[/]")
 
+    for lib in ["bitsandbytes", "peft", "trl"]:
+        ok = importlib.util.find_spec(lib) is not None
+        table.add_row(lib, "[green]installed[/]" if ok else "[dim]absent[/]")
+
+    table.add_row("ollama", "[dim]check added in Part 10[/]")
+
     if importlib.util.find_spec("torch") is not None:
         import torch
 

@@ -13,6 +13,7 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.import_linter_cache/
 .coverage
 coverage.xml
 htmlcov/
@@ -23,19 +24,16 @@ htmlcov/
 !.env.example
 
 # ── Generated artifacts: NEVER commit these ──────────────────────────────
-data/raw/
-data/processed/
-data/cache/
-artifacts/
-models/
-outputs/
+/data/
+/artifacts/
+/models/
+/outputs/
 *.gguf
 *.safetensors
 *.bin
 *.pt
 *.ckpt
 wandb/
-runs/
 
 # ── Registry database (ships as registry.example.db instead) ─────────────
 *.db
@@ -47,14 +45,16 @@ runs/
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
 
 # ── Notebook noise ───────────────────────────────────────────────────────
 .ipynb_checkpoints/
 
 # ── Third-party checkouts ────────────────────────────────────────────────
-vendor/llama.cpp/
+/vendor/
 
 # ── Explicitly KEEP: these are the deliverable ───────────────────────────
 !reports/**
 !evals/**/*.jsonl
 !docs/**
+!configs/**
