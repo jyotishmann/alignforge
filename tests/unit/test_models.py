@@ -48,7 +48,7 @@ def mock_torch_model() -> MagicMock:
     """A mock model with a named_modules interface for target discovery."""
     torch = pytest.importorskip("torch")
 
-    class ToyModel(torch.nn.Module):
+    class ToyModel(torch.nn.Module):  # type: ignore[name-defined,misc]
         def __init__(self) -> None:
             super().__init__()
             self.q_proj = torch.nn.Linear(64, 64, bias=False)
