@@ -30,7 +30,7 @@ def build_training_args(
     use_fp16 = hw.device == "cuda" and not hw.bf16_supported
     use_bf16 = hw.device == "cuda" and hw.bf16_supported
 
-    args = TrainingArguments(
+    args = TrainingArguments(  # type: ignore[call-arg]
         output_dir=str(output_dir),
         num_train_epochs=cfg.sft.num_train_epochs,
         per_device_train_batch_size=cfg.sft.per_device_train_batch_size,
@@ -47,7 +47,7 @@ def build_training_args(
         logging_steps=cfg.sft.logging_steps,
         save_steps=cfg.sft.save_steps,
         eval_steps=cfg.sft.eval_steps,
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         save_strategy="steps",
         save_total_limit=3,  # keep only 3 latest checkpoints
         load_best_model_at_end=True,
@@ -56,7 +56,7 @@ def build_training_args(
         report_to="none",  # no wandb/tensorboard by default
         dataloader_num_workers=0,  # 0 is safer on Colab (fork issues)
         remove_unused_columns=False,  # we manage columns ourselves
-        group_by_length=True,  # batch similar lengths → less padding waste
+        # group_by_length=True,  # batch similar lengths → less padding waste
         ddp_find_unused_parameters=False,  # not DDP but avoids a warning
         seed=cfg.project.seed,
     )
