@@ -1,0 +1,13 @@
+# β sweep driver. The sweep runner overrides beta from this base config.
+# Run: alignforge train dpo-sweep --betas 0.05,0.1,0.3 --limit 500
+dpo:
+  beta: 0.1                           # overridden per sweep run
+  num_train_epochs: 1
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 8
+  learning_rate: 5.0e-6
+  logging_steps: 5
+  save_steps: 50
+  max_prompt_length: 512
+  max_length: 1024
+  gradient_checkpointing: true
