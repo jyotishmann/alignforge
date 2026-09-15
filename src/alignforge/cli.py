@@ -201,9 +201,60 @@ def data_stats(
 
 
 @train_app.command("sft")
-def train_sft() -> None:
-    """Run QLoRA supervised fine-tuning."""
-    _not_yet("Part 05")
+def train_sft(
+    ctx: typer.Context,
+    config: Path | None = typer.Option(
+        None, "--config", "-c", exists=True, help="Training config YAML."
+    ),
+    model_config: Path | None = typer.Option(
+        None, "--model-config", "-m", exists=True, help="Model config YAML."
+    ),
+    dataset_hash: str = typer.Option(
+        ..., "--dataset-hash", "-d", help="Content hash from `data build`."
+    ),
+    limit: int | None = typer.Option(
+        None, "--limit", "-n", min=1, help="Train on first N rows (debug)."
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show plan without loading model."),
+    resume: str | None = typer.Option(None, "--resume", help="Resume from checkpoint name."),
+    drive_sync: str | None = typer.Option(
+        None, "--drive-sync", help="Google Drive path for Colab sync."
+    ),
+    set_overrides: list[str] | None = typer.Option(None, "--set", "-s", help="Config overrides."),
+) -> None:
+    """Run QLoRA supervised fine-tuning. Requires [train] extras installed."""
+    from alignforge.core.config import load_config
+    from alignforge.core.logging import setup_logging
+    from alignforge.core.paths import get_paths
+    from alignforge.train.run import run_sft
+
+    # Layer the config: base → model → training component → --set overrides.
+    paths = get_paths()
+    overrides = set_overrides or []
+    cfg = load_config(component_path=config, overrides=overrides)
+    if model_config:
+        from alignforge.core.config import load_config as _lc
+
+        cfg = _lc(component_path=model_config, overrides=overrides)
+
+    setup_logging(
+        level=cfg.logging.level,
+        fmt=cfg.logging.format,
+        log_dir=paths.logs_dir,
+    )
+
+    run_id = run_sft(
+        cfg=cfg,
+        dataset_hash=dataset_hash,
+        limit=limit,
+        dry_run=dry_run,
+        resume_from=resume,
+    )
+
+    if not dry_run:
+        typer.secho(f"\nSFT complete. Run ID: {run_id}", fg=typer.colors.GREEN)
+        typer.echo(f"View logs:  cat logs/alignforge.log | jq 'select(.run_id==\"{run_id}\")'")
+        typer.echo("Registry:   alignforge registry list")
 
 
 @train_app.command("dpo")
