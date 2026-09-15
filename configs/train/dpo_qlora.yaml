@@ -1,0 +1,17 @@
+# DPO alignment configuration. Load AFTER the SFT model config.
+# β = 0.1 is the DPO paper's main-experiment setting and a reasonable default.
+
+dpo:
+  beta: 0.1
+  num_train_epochs: 1
+  per_device_train_batch_size: 2       # half of SFT: each step has chosen + rejected
+  gradient_accumulation_steps: 8       # effective batch = 16 (matches SFT)
+  learning_rate: 5.0e-6               # 1 OOM below SFT — DPO diverges fast at SFT LR
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.1                   # longer warmup than SFT — DPO is less stable early
+  max_prompt_length: 512
+  max_length: 1024
+  optim: "paged_adamw_8bit"
+  gradient_checkpointing: true
+  logging_steps: 10
+  save_steps: 100

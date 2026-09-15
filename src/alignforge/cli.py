@@ -258,9 +258,64 @@ def train_sft(
 
 
 @train_app.command("dpo")
-def train_dpo() -> None:
-    """Run DPO preference alignment."""
-    _not_yet("Part 06")
+def train_dpo(
+    ctx: typer.Context,
+    config: Path | None = typer.Option(None, "--config", "-c", exists=True),
+    model_config: Path | None = typer.Option(None, "--model-config", "-m", exists=True),
+    sft_run_id: str = typer.Option(..., "--sft-run", "-s", help="SFT run ID to align from."),
+    pref_hash: str = typer.Option(
+        ..., "--pref-hash", "-p", help="Preference dataset content hash."
+    ),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    set_overrides: list[str] | None = typer.Option(None, "--set"),
+) -> None:
+    """Run DPO preference alignment on top of an SFT checkpoint."""
+    from alignforge.core.config import load_config
+    from alignforge.core.logging import setup_logging
+    from alignforge.core.paths import get_paths
+    from alignforge.train.dpo_run import run_dpo
+
+    paths = get_paths()
+    cfg = load_config(component_path=config, overrides=set_overrides or [])
+    setup_logging(level=cfg.logging.level, fmt=cfg.logging.format, log_dir=paths.logs_dir)
+
+    run_id = run_dpo(
+        cfg=cfg,
+        sft_run_id=sft_run_id,
+        preference_dataset_hash=pref_hash,
+        limit=limit,
+        dry_run=dry_run,
+    )
+
+    if not dry_run:
+        typer.secho(f"\nDPO complete. Run ID: {run_id}", fg=typer.colors.GREEN)
+        typer.echo(f"Next step: alignforge eval all --models base,{sft_run_id},{run_id}")
+
+
+@train_app.command("dpo-sweep")
+def train_dpo_sweep(
+    sft_run_id: str = typer.Option(..., "--sft-run", "-s"),
+    pref_hash: str = typer.Option(..., "--pref-hash", "-p"),
+    betas: str = typer.Option("0.05,0.1,0.3", "--betas", help="Comma-separated beta values."),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1),
+) -> None:
+    """Run DPO at multiple beta values and produce a comparison table."""
+    from alignforge.core.config import load_config
+    from alignforge.train.sweep import run_beta_sweep
+
+    beta_list = [float(b.strip()) for b in betas.split(",")]
+    cfg = load_config()
+    results = run_beta_sweep(
+        base_cfg=cfg,
+        sft_run_id=sft_run_id,
+        preference_hash=pref_hash,
+        betas=beta_list,
+        limit=limit,
+    )
+    typer.echo(f"\nSweep complete. {len(results)} runs.")
+    typer.echo("Win rates added after: alignforge eval all ...")
+    typer.echo("Report: reports/beta_sweep.md")
 
 
 @eval_app.command("all")
