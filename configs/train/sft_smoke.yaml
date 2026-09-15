@@ -1,0 +1,13 @@
+# Smoke-test config: full pipeline, 5 steps. ~2 minutes on CPU.
+# Use: alignforge train sft --config configs/train/sft_smoke.yaml --limit 50
+sft:
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 1
+  learning_rate: 2.0e-4
+  logging_steps: 1
+  save_steps: 5
+  eval_steps: 5
+  gradient_checkpointing: false       # off for CPU testing
+  packing: false
+  completion_only: true

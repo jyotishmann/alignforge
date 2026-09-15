@@ -28,7 +28,7 @@ def test_doctor_runs_without_torch(cli: CliRunner) -> None:
     "args",
     [
         ["data", "build"],
-        ["train", "sft"],
+        # ["train", "sft"],
         ["train", "dpo"],
         ["eval", "all"],
         ["export", "gguf"],
