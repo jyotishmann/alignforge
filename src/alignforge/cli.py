@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
+import structlog
 import typer
 
 from alignforge import __version__
 from alignforge.cli_state import GlobalState
+
+log = structlog.get_logger()
 
 app = typer.Typer(
     name="alignforge",
@@ -318,10 +322,118 @@ def train_dpo_sweep(
     typer.echo("Report: reports/beta_sweep.md")
 
 
+@eval_app.command("generate")
+def eval_generate(
+    models: str = typer.Option(
+        ...,
+        "--models",
+        "-m",
+        help="Comma-separated model IDs to generate from (e.g. base,sft,dpo).",
+    ),
+    suites: str | None = typer.Option(
+        None,
+        "--suites",
+        help="Comma-separated suite names. Defaults to all registered suites.",
+    ),
+    params: str = typer.Option(
+        "eval",
+        "--params",
+        help="Decode parameter set: 'eval' (sampled) or 'greedy' (deterministic).",
+    ),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1),
+    responses_dir: Path | None = typer.Option(
+        None,
+        "--responses-dir",
+        help="Directory for response JSONL files. Default: evals/responses/",
+    ),
+) -> None:
+    """Generate model responses for all eval suites. Checkpointed — safe to resume."""
+    from alignforge.core.config import load_config
+    from alignforge.core.paths import get_paths
+    from alignforge.core.registry import get_registry
+    from alignforge.eval.decode_params import NAMED_PARAMS
+    from alignforge.eval.generation import run_generation
+    from alignforge.eval.suites.loader import SUITE_REGISTRY, verify_suites_exist
+
+    cfg = load_config()
+    paths = get_paths()
+    reg = get_registry()
+
+    model_ids = [m.strip() for m in models.split(",")]
+    suite_names = [s.strip() for s in suites.split(",")] if suites else list(SUITE_REGISTRY.keys())
+    decode_params = NAMED_PARAMS.get(params, NAMED_PARAMS["eval"])
+
+    # Verify suites exist before loading any model.
+    problems = verify_suites_exist(suite_names, paths.evals_dir)
+    if problems:
+        for p in problems:
+            typer.secho(f"  ⚠  {p}", fg=typer.colors.YELLOW)
+        typer.echo("\nRun `scripts/build_eval_suites.py` to build MT-Bench and AlpacaEval subsets.")
+        if any("domain_v1" in p for p in problems):
+            typer.secho(
+                "domain_v1 missing or too small — write your 50 cases first!",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+
+    rdir = responses_dir or paths.evals_dir / "responses"
+
+    # Need a ChatFormat for Transformers backends. Load the default tokenizer lazily.
+    chat_format = _get_chat_format_for_eval(cfg)
+
+    summary = run_generation(
+        model_ids=model_ids,
+        suite_names=suite_names,
+        evals_dir=paths.evals_dir,
+        responses_dir=rdir,
+        registry=reg,
+        chat_format=chat_format,
+        params=decode_params,
+        limit=limit,
+    )
+
+    typer.secho("\n✓ Generation complete:", fg=typer.colors.GREEN)
+    for mid, n in summary.items():
+        typer.echo(f"  {mid}: {n} responses")
+    typer.echo(f"\nResponses written to: {rdir}")
+    typer.echo("Next: alignforge eval judge --responses-dir <dir>")
+
+
+def _get_chat_format_for_eval(cfg: Any) -> Any:
+    """Load the chat format for eval — tokenizer only, no model weights."""
+    try:
+        from transformers import AutoTokenizer
+
+        from alignforge.models.chat_format import ChatFormat
+
+        tok = AutoTokenizer.from_pretrained(
+            cfg.model.name_or_path, trust_remote_code=cfg.model.trust_remote_code
+        )
+        return ChatFormat.from_tokenizer(tok)
+    except Exception as exc:
+        log.warning("chat_format_load_failed_using_echo", error=str(exc))
+        # Return a minimal chat format object that works for the echo backend.
+        from unittest.mock import MagicMock
+
+        fmt = MagicMock()
+        fmt.render_prompt = lambda msgs: msgs[-1]["content"] if msgs else ""
+        return fmt
+
+
 @eval_app.command("all")
-def eval_all() -> None:
-    """Generate, judge, score and report in one pass."""
-    _not_yet("Part 08")
+def eval_all(
+    models: str = typer.Option(..., "--models", "-m", help="Comma-separated model IDs."),
+    suites: str | None = typer.Option(None, "--suites"),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1),
+) -> None:
+    """Generate, judge, score and report in one pass. (judge+metrics added in Part 08.)"""
+    # Phase 1: generation (available now).
+    eval_generate(models=models, suites=suites, limit=limit)
+    # Phases 2-3: judge + metrics — see Part 08.
+    typer.secho(
+        "\nGeneration done. Judge and metrics coming in Part 08.",
+        fg=typer.colors.YELLOW,
+    )
 
 
 @export_app.command("gguf")
