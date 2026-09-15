@@ -186,12 +186,11 @@ def _resolve_dataset(paths: Any, dataset_hash: str, cfg: AlignForgeConfig) -> Pa
                 with manifest.open() as f:
                     m = json.load(f)
                 if m.get("content_hash") == dataset_hash:
-                    return child
+                    return Path(child)
     from alignforge.core.errors import DataError
 
     raise DataError(
-        f"Dataset with hash {dataset_hash!r} not found. "
-        f"Run `alignforge data build` to produce it.",
+        f"Dataset with hash {dataset_hash!r} not found. Run `alignforge data build` to produce it.",
         source=dataset_hash,
     )
 
