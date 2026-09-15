@@ -62,7 +62,7 @@ def load_sft_dataset(
         from alignforge.core.errors import DataError
 
         raise DataError(
-            f"train.parquet not found in {artifact_dir}. " f"Run `alignforge data build` first.",
+            f"train.parquet not found in {artifact_dir}. Run `alignforge data build` first.",
             source=str(artifact_dir),
         )
 
@@ -146,7 +146,7 @@ def get_response_template(chat_format: Any) -> str:
 
     template = full[user_end:assistant_start]
     log.info("response_template_derived", template=repr(template))
-    return template
+    return str(template)
 
 
 def verify_labels_not_all_masked(labels: list[int]) -> None:
