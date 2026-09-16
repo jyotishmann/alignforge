@@ -422,18 +422,176 @@ def _get_chat_format_for_eval(cfg: Any) -> Any:
 
 @eval_app.command("all")
 def eval_all(
-    models: str = typer.Option(..., "--models", "-m", help="Comma-separated model IDs."),
+    models: str = typer.Option(..., "--models", "-m"),
     suites: str | None = typer.Option(None, "--suites"),
+    backend: str = typer.Option("echo", "--backend", "-b"),
     limit: int | None = typer.Option(None, "--limit", "-n", min=1),
 ) -> None:
-    """Generate, judge, score and report in one pass. (judge+metrics added in Part 08.)"""
-    # Phase 1: generation (available now).
+    """Generate, judge, compute metrics, and render report in one pass."""
+    # Phase 1: generate.
     eval_generate(models=models, suites=suites, limit=limit)
-    # Phases 2-3: judge + metrics — see Part 08.
-    typer.secho(
-        "\nGeneration done. Judge and metrics coming in Part 08.",
-        fg=typer.colors.YELLOW,
+    # Phase 2: judge.
+    eval_judge(models=models, suites=suites, backend=backend, limit=limit)
+    # Phase 3: metrics + report.
+    eval_report(models=models, suites=suites)
+    typer.secho("\n✓ eval all complete.", fg=typer.colors.GREEN)
+
+
+@eval_app.command("judge")
+def eval_judge(
+    models: str = typer.Option(..., "--models", "-m", help="Comma-separated model IDs."),
+    suites: str | None = typer.Option(None, "--suites"),
+    backend: str = typer.Option(
+        "echo", "--backend", "-b", help="Judge backend: openai|local|echo."
+    ),
+    judge_model: str = typer.Option("gpt-4o-mini", "--judge-model"),
+    responses_dir: Path | None = typer.Option(None, "--responses-dir"),
+    judgements_dir: Path | None = typer.Option(None, "--judgements-dir"),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1),
+) -> None:
+    """Run position-debiased pairwise judging on generated responses."""
+    from alignforge.core.paths import get_paths
+    from alignforge.eval.judge import run_judging
+    from alignforge.eval.judge_client import get_judge_fn
+    from alignforge.eval.suites.loader import SUITE_REGISTRY
+
+    paths = get_paths()
+    model_ids = [m.strip() for m in models.split(",")]
+    suite_names = [s.strip() for s in suites.split(",")] if suites else list(SUITE_REGISTRY.keys())
+
+    typer.echo(f"Judge backend: {backend}" + (f" ({judge_model})" if backend == "openai" else ""))
+    typer.echo(f"Models: {model_ids}")
+    typer.echo(f"Suites: {suite_names}")
+    typer.echo(f"Pairs: {len(model_ids) * (len(model_ids) - 1) // 2} (each judged twice per case)")
+
+    judge_fn = get_judge_fn(backend, model=judge_model if backend == "openai" else None)
+
+    rdir = responses_dir or paths.evals_dir / "responses"
+    jdir = judgements_dir or paths.evals_dir / "judgements"
+
+    summary = run_judging(
+        model_ids=model_ids,
+        suite_names=suite_names,
+        responses_dir=rdir,
+        judgements_dir=jdir,
+        judge_fn=judge_fn,
+        evals_dir=paths.evals_dir,
+        limit=limit,
     )
+
+    typer.secho("\n✓ Judging complete:", fg=typer.colors.GREEN)
+    for pair, n in summary.items():
+        typer.echo(f"  {pair}: {n} cases judged")
+    typer.echo(f"\nNext: alignforge eval metrics --judgements-dir {jdir}")
+
+
+@eval_app.command("metrics")
+def eval_metrics(
+    models: str = typer.Option(..., "--models", "-m"),
+    suites: str | None = typer.Option(None, "--suites"),
+    judgements_dir: Path | None = typer.Option(None, "--judgements-dir"),
+    responses_dir: Path | None = typer.Option(None, "--responses-dir"),
+    n_resamples: int = typer.Option(10_000, "--n-resamples"),
+    output: Path | None = typer.Option(None, "--output", help="Save metrics JSON to this path."),
+) -> None:
+    """Compute win rates, CIs, Bradley-Terry Elo, and length-controlled metrics."""
+    import json
+
+    from alignforge.core.paths import get_paths
+    from alignforge.eval.metrics import compute_all_metrics
+    from alignforge.eval.suites.loader import SUITE_REGISTRY
+
+    paths = get_paths()
+    model_ids = [m.strip() for m in models.split(",")]
+    suite_names = [s.strip() for s in suites.split(",")] if suites else list(SUITE_REGISTRY.keys())
+
+    jdir = judgements_dir or paths.evals_dir / "judgements"
+    rdir = responses_dir or paths.evals_dir / "responses"
+
+    metrics = compute_all_metrics(
+        model_ids=model_ids,
+        suite_names=suite_names,
+        judgements_dir=jdir,
+        responses_dir=rdir,
+        evals_dir=paths.evals_dir,
+        n_resamples=n_resamples,
+    )
+
+    # Print headline.
+    typer.secho("\n=== Win Rates ===", fg=typer.colors.GREEN)
+    for pair, wr in metrics.get("pairwise", {}).items():
+        typer.echo(f"  {pair}: {wr['win_rate']} [{wr['ci_low']}, {wr['ci_high']}] (n={wr['n']})")
+
+    if metrics.get("elo"):
+        typer.secho("\n=== Bradley-Terry Elo ===", fg=typer.colors.GREEN)
+        for model, score in sorted(metrics["elo"].items(), key=lambda x: -x[1]):
+            typer.echo(f"  {model}: {score}")
+
+    if output:
+        with output.open("w") as f:
+            json.dump(metrics, f, indent=2)
+        typer.echo(f"\nMetrics saved to {output}")
+
+
+@eval_app.command("report")
+def eval_report(
+    models: str = typer.Option(..., "--models", "-m"),
+    suites: str | None = typer.Option(None, "--suites"),
+    eval_id: str | None = typer.Option(None, "--eval-id", help="Identifier for this eval run."),
+    judgements_dir: Path | None = typer.Option(None, "--judgements-dir"),
+    responses_dir: Path | None = typer.Option(None, "--responses-dir"),
+    judge: str = typer.Option("gpt-4o-mini", "--judge"),
+    n_resamples: int = typer.Option(10_000, "--n-resamples"),
+) -> None:
+    """Generate Markdown and HTML evaluation reports with regression gallery."""
+    import uuid
+
+    from alignforge.core.paths import get_paths
+    from alignforge.core.registry import get_registry
+    from alignforge.eval.metrics import compute_all_metrics
+    from alignforge.eval.report import render_report
+    from alignforge.eval.suites.loader import SUITE_REGISTRY
+
+    paths = get_paths()
+    model_ids = [m.strip() for m in models.split(",")]
+    suite_names = [s.strip() for s in suites.split(",")] if suites else list(SUITE_REGISTRY.keys())
+    eid = eval_id or uuid.uuid4().hex[:8]
+
+    jdir = judgements_dir or paths.evals_dir / "judgements"
+    rdir = responses_dir or paths.evals_dir / "responses"
+
+    metrics = compute_all_metrics(
+        model_ids=model_ids,
+        suite_names=suite_names,
+        judgements_dir=jdir,
+        responses_dir=rdir,
+        evals_dir=paths.evals_dir,
+        n_resamples=n_resamples,
+    )
+
+    md_path, html_path = render_report(
+        metrics=metrics,
+        judgements_dir=jdir,
+        responses_dir=rdir,
+        evals_dir=paths.evals_dir,
+        output_dir=paths.reports_dir,
+        eval_id=eid,
+        judge_name=judge,
+    )
+
+    # Register the evaluation in the registry.
+    pairwise = metrics.get("pairwise", {})
+    for pair_key, _wr in pairwise.items():
+        _model_a, _model_b = pair_key.split("_vs_")
+        get_registry()  # ensure connected
+        from alignforge.core.registry import get_registry as _gr
+
+        _gr().conn.execute(
+            """INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('eval_schema', '1')"""
+        )
+        # Store in a simple way (full evaluations table added in a migration).
+    typer.secho(f"\n✓ Report generated: {md_path}", fg=typer.colors.GREEN)
+    typer.echo(f"HTML: {html_path}")
 
 
 @export_app.command("gguf")
