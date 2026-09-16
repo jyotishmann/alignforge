@@ -595,9 +595,48 @@ def eval_report(
 
 
 @export_app.command("gguf")
-def export_gguf() -> None:
-    """Merge adapters and export a quantised GGUF."""
-    _not_yet("Part 09")
+def export_gguf(
+    dpo_run: str = typer.Option(..., "--dpo-run", "-d", help="DPO run ID from registry."),
+    config: Path | None = typer.Option(None, "--config", "-c", exists=True),
+    model_config: Path | None = typer.Option(None, "--model-config", "-m", exists=True),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    skip_smoke: bool = typer.Option(False, "--skip-smoke-test"),
+    skip_eval: bool = typer.Option(False, "--skip-eval", help="Skip GGUF deployment delta eval."),
+    set_overrides: list[str] | None = typer.Option(None, "--set"),
+) -> None:
+    """Merge DPO adapter, convert to GGUF, quantise, and register with Ollama."""
+    from alignforge.core.config import load_config
+    from alignforge.core.logging import setup_logging
+    from alignforge.core.paths import get_paths
+    from alignforge.export.gguf import run_export
+
+    cfg = load_config(component_path=config, overrides=set_overrides or [])
+    paths = get_paths()
+    setup_logging(level=cfg.logging.level, fmt=cfg.logging.format, log_dir=paths.logs_dir)
+
+    artifacts = run_export(
+        cfg=cfg,
+        dpo_run_id=dpo_run,
+        dry_run=dry_run,
+        skip_smoke_test=skip_smoke,
+        skip_gguf_eval=skip_eval,
+    )
+
+    if not dry_run and artifacts:
+        typer.secho("\n✓ Export complete:", fg=typer.colors.GREEN)
+        for kind, path in artifacts.items():
+            typer.echo(f"  {kind}: {path}")
+        tag = artifacts.get("ollama_tag", "")
+        if tag:
+            typer.echo("\nTest with curl:")
+            typer.echo(
+                f'  curl http://localhost:11434/api/generate -d \'{{"model":"{tag}",'
+                f'"prompt":"How do I reverse a list?","stream":false}}\''
+            )
+            typer.echo("\nRegister for serving:")
+            typer.echo(
+                f"  alignforge registry publish --run {dpo_run} --as dpo --display 'DPO (β=0.1)'"
+            )
 
 
 @registry_app.command("list")
@@ -637,6 +676,120 @@ def registry_list(
             r.get("started_at", "")[:19],
         )
     console.print(table)
+
+
+@registry_app.command("publish")
+def registry_publish(
+    run_id: str = typer.Option(..., "--run", "-r", help="Run ID of the model to publish."),
+    model_id: str = typer.Option(
+        ..., "--as", "-a", help="Stable model ID for the API (e.g. 'dpo')."
+    ),
+    display_name: str = typer.Option(
+        ..., "--display", "-d", help="Human-readable name for the UI."
+    ),
+    backend: str = typer.Option(
+        "ollama", "--backend", help="Engine backend: ollama|transformers|echo."
+    ),
+    weights_ref: str | None = typer.Option(
+        None, "--weights", help="Tag or path. Inferred from artifacts if omitted."
+    ),
+    sort_order: int = typer.Option(0, "--sort", help="Display order in the UI (lower = first)."),
+) -> None:
+    """Make a trained model available to the API and UI."""
+    from alignforge.core.registry import get_registry
+
+    reg = get_registry()
+
+    # Infer weights_ref from artifacts if not provided.
+    ref = weights_ref
+    if ref is None:
+        arts = reg.get_artifacts(run_id)
+        for art in arts:
+            if (backend == "ollama" and art["kind"] == "ollama_tag") or (
+                backend == "transformers" and art["kind"] == "lora_adapter"
+            ):
+                ref = art["path"]
+                break
+        if ref is None:
+            typer.secho(
+                f"Could not infer weights_ref for backend={backend!r}. "
+                f"Specify --weights explicitly.",
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+
+    reg.publish_model(
+        model_id=model_id,
+        display_name=display_name,
+        backend=backend,
+        weights_ref=ref,
+        run_id=run_id,
+        sort_order=sort_order,
+    )
+    typer.secho(f"✓ Published: {model_id} → {ref}", fg=typer.colors.GREEN)
+    typer.echo("The model will appear in the arena UI after `alignforge serve all` restarts.")
+
+
+@registry_app.command("unpublish")
+def registry_unpublish(
+    model_id: str = typer.Argument(..., help="Model ID to disable."),
+) -> None:
+    """Disable a served model without deleting it from the registry."""
+    from alignforge.core.registry import get_registry
+
+    reg = get_registry()
+    reg.conn.execute("UPDATE served_models SET enabled = 0 WHERE model_id = ?", (model_id,))
+    reg.conn.commit()
+    typer.secho(f"✓ Unpublished: {model_id}", fg=typer.colors.GREEN)
+
+
+@registry_app.command("show")
+def registry_show(
+    run_id: str = typer.Argument(..., help="Run ID to inspect."),
+) -> None:
+    """Show full details for one run: config hash, artifacts, metrics."""
+    # import json
+
+    from rich.console import Console
+    from rich.table import Table
+
+    from alignforge.core.registry import get_registry
+
+    reg = get_registry()
+    run = reg.get_run(run_id)
+    if not run:
+        typer.secho(f"Run {run_id!r} not found.", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    console = Console()
+    table = Table(title=f"Run: {run_id}")
+    table.add_column("Field")
+    table.add_column("Value")
+    for field in [
+        "kind",
+        "status",
+        "config_hash",
+        "dataset_hash",
+        "git_sha",
+        "started_at",
+        "finished_at",
+    ]:
+        table.add_row(field, str(run.get(field, "")))
+    console.print(table)
+
+    arts = reg.get_artifacts(run_id)
+    if arts:
+        at = Table(title="Artifacts")
+        at.add_column("kind")
+        at.add_column("path")
+        at.add_column("sha256")
+        for a in arts:
+            at.add_row(a["kind"], a["path"][:60], (a.get("sha256") or "")[:12])
+        console.print(at)
+
+    if run.get("metrics_json"):
+        console.print("\n[bold]Metrics:[/bold]")
+        console.print(run["metrics_json"])
 
 
 @serve_app.command("api")

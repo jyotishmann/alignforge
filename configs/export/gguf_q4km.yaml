@@ -1,0 +1,8 @@
+# GGUF export configuration.
+# Adjust llama_cpp_dir if llama.cpp is installed elsewhere.
+export:
+  quant_type: "Q4_K_M"          # recommended quality/size sweet spot
+  llama_cpp_dir: "vendor/llama.cpp"
+  ollama_tag_prefix: "alignforge"  # model will be tagged alignforge-<name>:v<version>
+  ollama_version: "1"
+  smoke_test_prompt: "What is the difference between a list and a tuple in Python?"
