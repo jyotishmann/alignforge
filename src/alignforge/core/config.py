@@ -150,6 +150,14 @@ class DataConfig(_Strict):
 
 
 # ── Root ────────────────────────────────────────────────────────────────
+class ExportConfig(_Strict):
+    quant_type: str = "Q4_K_M"
+    llama_cpp_dir: str = "vendor/llama.cpp"
+    ollama_tag_prefix: str = "alignforge"
+    ollama_version: str = "1"
+    smoke_test_prompt: str = "What is the difference between a list and a tuple in Python?"
+
+
 class AlignForgeConfig(_Strict):
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
@@ -163,6 +171,7 @@ class AlignForgeConfig(_Strict):
     serve: ServeConfig = Field(default_factory=ServeConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
     data: DataConfig = Field(default_factory=DataConfig)
+    export: ExportConfig = Field(default_factory=ExportConfig)
 
 
 # ── Composition engine ──────────────────────────────────────────────────
