@@ -37,7 +37,7 @@ class InferenceEngine(ABC):
     """Abstract inference backend. Implement astream() and ahealth()."""
 
     @abstractmethod
-    async def astream(
+    def astream(
         self,
         messages: list[dict[str, str]],
         model_id: str,
