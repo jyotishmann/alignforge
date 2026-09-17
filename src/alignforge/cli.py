@@ -89,6 +89,18 @@ def doctor() -> None:
         ok = importlib.util.find_spec(lib) is not None
         table.add_row(lib, "[green]installed[/]" if ok else "[dim]absent[/]")
 
+    try:
+        import httpx
+
+        r = httpx.get("http://localhost:11434/api/tags", timeout=2.0)
+        tags = [m["name"] for m in r.json().get("models", [])]
+        ollama_status = f"[green]running[/] — {len(tags)} model(s)"
+        if any("alignforge" in t for t in tags):
+            ollama_status += " [dim](alignforge model found)[/dim]"
+    except Exception:
+        ollama_status = "[yellow]not running[/] (optional — needed for GGUF serving)"
+    table.add_row("ollama", ollama_status)
+
     table.add_row("ollama", "[dim]check added in Part 10[/]")
 
     if importlib.util.find_spec("torch") is not None:
@@ -793,12 +805,76 @@ def registry_show(
 
 
 @serve_app.command("api")
-def serve_api() -> None:
+def serve_api(
+    host: str = typer.Option("0.0.0.0", "--host"),
+    port: int = typer.Option(8000, "--port"),
+    reload: bool = typer.Option(False, "--reload", help="Hot-reload (dev only)."),
+    engine: str = typer.Option(
+        "echo", "--engine", "-e", help="Default engine: echo|ollama|transformers."
+    ),
+    set_overrides: list[str] | None = typer.Option(None, "--set"),
+) -> None:
     """Run the FastAPI inference service."""
-    _not_yet("Part 10")
+    import uvicorn
+
+    from alignforge.core.config import load_config
+    from alignforge.core.logging import setup_logging
+    from alignforge.core.paths import get_paths
+
+    cfg = load_config(overrides=(set_overrides or []) + [f"serve.default_engine={engine}"])
+    paths = get_paths()
+    setup_logging(level=cfg.logging.level, fmt=cfg.logging.format, log_dir=paths.logs_dir)
+
+    typer.echo(f"Starting API on http://{host}:{port} (engine={engine})")
+    typer.echo(f"Docs:   http://{host}:{port}/docs")
+    typer.echo(f"Health: http://{host}:{port}/health")
+
+    from alignforge.serve.app import create_app
+
+    app = create_app(max_concurrent=cfg.serve.concurrency_limit)
+
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        reload=reload,
+        log_config=None,  # use structlog, not uvicorn's logging
+    )
 
 
 @serve_app.command("ui")
 def serve_ui() -> None:
-    """Run the Gradio comparison UI."""
-    _not_yet("Part 11")
+    """Run the Gradio comparison UI. (Implemented in Part 11.)"""
+    typer.secho("Gradio UI — implemented in Part 11.", fg=typer.colors.YELLOW)
+    raise typer.Exit(code=2)
+
+
+@serve_app.command("all")
+def serve_all(
+    api_port: int = typer.Option(8000, "--api-port"),
+    ui_port: int = typer.Option(7860, "--ui-port"),
+    engine: str = typer.Option("ollama", "--engine", "-e"),
+) -> None:
+    """Run API and UI in one process group. (UI added in Part 11.)"""
+    # import os
+    # import signal
+    import subprocess
+    import sys
+
+    api_proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "alignforge.serve.run_api",
+            "--port",
+            str(api_port),
+            "--engine",
+            engine,
+        ]
+    )
+    try:
+        typer.echo(f"API running at http://localhost:{api_port}")
+        typer.echo("UI not yet available — run after Part 11.")
+        api_proc.wait()
+    except KeyboardInterrupt:
+        api_proc.terminate()
