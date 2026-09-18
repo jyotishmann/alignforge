@@ -843,10 +843,31 @@ def serve_api(
 
 
 @serve_app.command("ui")
-def serve_ui() -> None:
-    """Run the Gradio comparison UI. (Implemented in Part 11.)"""
-    typer.secho("Gradio UI — implemented in Part 11.", fg=typer.colors.YELLOW)
-    raise typer.Exit(code=2)
+def serve_ui(
+    api_base: str = typer.Option("http://localhost:8000", "--api-base"),
+    port: int = typer.Option(7860, "--port"),
+    share: bool = typer.Option(False, "--share", help="Create a public Gradio link."),
+) -> None:
+    """Run the Gradio comparison UI."""
+    from alignforge.core.config import load_config
+    from alignforge.core.logging import setup_logging
+    from alignforge.core.paths import get_paths
+    from alignforge.ui.app import create_ui
+
+    cfg = load_config()
+    paths = get_paths()
+    setup_logging(level=cfg.logging.level, fmt=cfg.logging.format, log_dir=paths.logs_dir)
+
+    typer.echo(f"Starting Gradio UI at http://localhost:{port}")
+    typer.echo(f"Connecting to API at {api_base}")
+
+    demo = create_ui(api_base=api_base)
+    demo.launch(  # type: ignore[call-arg]
+        server_port=port,
+        share=share,
+        show_api=False,
+        quiet=True,
+    )
 
 
 @serve_app.command("all")
@@ -854,27 +875,62 @@ def serve_all(
     api_port: int = typer.Option(8000, "--api-port"),
     ui_port: int = typer.Option(7860, "--ui-port"),
     engine: str = typer.Option("ollama", "--engine", "-e"),
+    share: bool = typer.Option(False, "--share"),
 ) -> None:
-    """Run API and UI in one process group. (UI added in Part 11.)"""
-    # import os
-    # import signal
+    """Run API and UI together. Ctrl-C cleanly stops both."""
+    import signal
     import subprocess
     import sys
+    import time
 
-    api_proc = subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "alignforge.serve.run_api",
-            "--port",
-            str(api_port),
-            "--engine",
-            engine,
-        ]
-    )
+    api_cmd = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "alignforge.serve.app:create_app",
+        "--factory",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        str(api_port),
+        "--log-config",
+        "none",
+    ]
+
+    typer.echo(f"Starting API on http://localhost:{api_port}...")
+    api_proc = subprocess.Popen(api_cmd)
+
+    # Wait for API to be ready.
+    import httpx
+
+    for _ in range(20):
+        time.sleep(0.5)
+        try:
+            httpx.get(f"http://localhost:{api_port}/health", timeout=1.0)
+            break
+        except Exception:
+            pass
+
+    typer.echo(f"Starting UI on http://localhost:{ui_port}...")
+    from alignforge.ui.app import create_ui
+
+    demo = create_ui(api_base=f"http://localhost:{api_port}")
+
+    def _shutdown(sig: int, frame: Any) -> None:
+        typer.echo("\nShutting down...")
+        api_proc.terminate()
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGINT, _shutdown)
+    signal.signal(signal.SIGTERM, _shutdown)
+
     try:
-        typer.echo(f"API running at http://localhost:{api_port}")
-        typer.echo("UI not yet available — run after Part 11.")
-        api_proc.wait()
-    except KeyboardInterrupt:
+        demo.launch(  # type: ignore[call-arg]
+            server_port=ui_port,
+            share=share,
+            show_api=False,
+            quiet=True,
+            prevent_thread_lock=False,
+        )
+    finally:
         api_proc.terminate()
