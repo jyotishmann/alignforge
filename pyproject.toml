@@ -162,7 +162,9 @@ module = [
     "alignforge.ui.components.*",
 ]
 disallow_untyped_defs = false
+disallow_incomplete_defs = false
 disallow_untyped_decorators = false
+disallow_untyped_calls = false
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -183,9 +185,14 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+fail_under = 65
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+
+[tool.coverage.paths]
+# Map src-layout paths to installed paths for accurate reporting.
+source = ["src/alignforge", "*/site-packages/alignforge"]
