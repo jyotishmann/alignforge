@@ -77,3 +77,34 @@ serve:
 
 demo:
 	@echo "See Part 10 — one-command demo not available until the serve layer is built."
+
+# Coverage targets.
+coverage:
+    uv run pytest tests/ -m "not gpu and not slow and not integration" \
+      --cov=alignforge --cov-report=html --cov-report=term-missing -q
+    @echo "HTML report: htmlcov/index.html"
+
+# Run the slow/integration suite (requires network, no GPU).
+test-integration:
+    uv run pytest tests/ -m "integration" --tb=short -v
+
+# Run everything including slow tests (local only, not CI).
+test-all:
+    uv run pytest tests/ --tb=short -q
+
+# Full gate — includes integration tests (requires network, no GPU).
+check-full: check test-integration
+
+# Print a test count summary.
+test-summary:
+	@uv run pytest tests/ --co -q --no-header 2>/dev/null | tail -3
+
+# Run only tests for one layer.
+test-core:
+	uv run pytest tests/ -k "config or registry or hardware or logging or seed" -v
+
+test-serve:
+	uv run pytest tests/ -k "serve or api or middleware or engine" -v
+
+test-eval:
+	uv run pytest tests/ -k "eval or judge or metrics" -v
