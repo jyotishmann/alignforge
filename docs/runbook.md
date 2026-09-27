@@ -26,7 +26,7 @@ source .venv/bin/activate
 alignforge doctor   # verify environment
 ```
 
-On Colab: open `notebooks/01_colab_sft.ipynb`. Cell 1 handles setup.
+On Colab: open `notebooks/alignforge_colab.ipynb', "Run all each session". Cell 1 handles setup.
 
 ---
 
