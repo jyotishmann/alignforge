@@ -65,7 +65,7 @@ def main(
 
     # Upload GGUF.
     if upload_gguf and gguf_path and gguf_path.exists():
-        typer.echo(f"Uploading GGUF ({gguf_path.name}, {gguf_path.stat().st_size/1e9:.1f}GB)...")
+        typer.echo(f"Uploading GGUF ({gguf_path.name}, {gguf_path.stat().st_size / 1e9:.1f}GB)...")
         api.upload_file(
             path_or_fileobj=str(gguf_path),
             path_in_repo=gguf_path.name,
