@@ -82,6 +82,8 @@ def build_sft_trainer(
     """Build the SFTTrainer with completion-only loss masking."""
     from trl import DataCollatorForCompletionOnlyLM, SFTTrainer
 
+    from alignforge.train.callbacks import wrap_callbacks  # HF-interface adapter
+
     # Completion-only collator — masks instruction tokens to -100.
     collator = DataCollatorForCompletionOnlyLM(
         response_template=response_template,
@@ -102,7 +104,7 @@ def build_sft_trainer(
         dataset_text_field="text",
         max_seq_length=cfg.model.max_seq_len,
         packing=cfg.sft.packing,
-        callbacks=callbacks or [],
+        callbacks=wrap_callbacks(callbacks or []),
     )
     return trainer
 

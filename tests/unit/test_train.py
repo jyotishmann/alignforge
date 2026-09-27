@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -57,26 +58,30 @@ class TestTrainingArgs:
 
 class TestVRAMCallback:
     def test_logs_every_n_steps(self) -> None:
-        """VRAMCallback only logs on multiples of log_every_n_steps."""
+        """Logs once per N steps, with peak/total converted to GB."""
         from alignforge.train.callbacks import VRAMCallback
 
+        # The callback imports torch inside the method, so patch sys.modules.
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = True
+        fake_torch.cuda.max_memory_allocated.return_value = 8 * 1024**3
+        fake_torch.cuda.get_device_properties.return_value.total_memory = 16 * 1024**3
+
         cb = VRAMCallback(log_every_n_steps=5)
-        mock_state = MagicMock()
-        mock_state.global_step = 5
+        state = MagicMock(global_step=5)
+        with (
+            patch.dict(sys.modules, {"torch": fake_torch}),
+            patch("alignforge.train.callbacks.log") as mock_log,
+        ):
+            for _ in range(5):
+                cb.on_step_end(None, state, None)
 
-        log_calls: list[dict[str, Any]] = []
-
-        with patch("alignforge.train.callbacks.log") as mock_log:
-            mock_log.info = lambda event, **kw: log_calls.append({"event": event, **kw})
-            with patch("alignforge.train.callbacks.torch", create=True) as mt:
-                mt.cuda.is_available.return_value = True
-                mt.cuda.max_memory_allocated.return_value = 8 * 1024**3
-                mt.cuda.get_device_properties.return_value.total_mem = 16 * 1024**3
-
-                cb.on_step_end(None, mock_state, None)
-
-        # Should have logged (step 5 is a multiple of 5).
-        assert any(c.get("event") == "vram_step" for c in log_calls)
+        events = [c.args[0] for c in mock_log.info.call_args_list]
+        assert events.count("vram_step") == 1
+        kwargs = mock_log.info.call_args.kwargs
+        assert kwargs["peak_gb"] == 8.0
+        assert kwargs["total_gb"] == 16.0
+        assert kwargs["pct"] == 50.0
 
 
 class TestResponseTemplate:
