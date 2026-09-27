@@ -1,0 +1,13 @@
+# Known-good training stack for the APIs src/alignforge/train calls:
+#   TrainingArguments(evaluation_strategy=...), trl.DataCollatorForCompletionOnlyLM,
+#   SFTTrainer(tokenizer=, dataset_text_field=, max_seq_length=).
+# Newer transformers/trl removed or moved all three. Torch is NOT pinned:
+# we keep Colab's preinstalled CUDA build (reinstalling it costs ~5 min and 2 GB).
+#
+# Usage: pip install -e ".[train,data]" -c constraints/colab-gpu.txt
+# `notebooks/_colab.py preflight` verifies these APIs after install.
+transformers==4.44.2
+trl==0.11.4
+peft==0.12.0
+accelerate==0.34.2
+bitsandbytes>=0.45.0
