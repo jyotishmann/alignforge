@@ -1,10 +1,10 @@
 
 # AlignForge
 
-[![CI](https://github.com/<your-username>/alignforge/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-username>/alignforge/actions/workflows/ci.yml)
+[![CI](https://github.com/jyotishmann/alignforge/actions/workflows/ci.yml/badge.svg)](https://github.com/jyotishmann/alignforge/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/<your-username>/alignforge/blob/main/notebooks/alignforge_colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jyotishmann/alignforge/blob/main/notebooks/alignforge_colab.ipynb)
 
 > **End-to-end LLM post-training pipeline: QLoRA SFT → DPO alignment →
 > position-debiased evaluation → GGUF export → OpenAI-compatible serving.**
