@@ -7,6 +7,7 @@ model:
   torch_dtype: "auto"          # resolved to float16 on T4 by hardware probe
   max_seq_len: 1024
   trust_remote_code: false
+  attn_implementation: flash_attention_2
 
 quant:
   load_in_4bit: true

@@ -18,4 +18,12 @@ sft:
   packing: false                        # off — packing + completion-only mask interact badly
   completion_only: true                 # only compute loss on the assistant response tokens
 
+# T4: fp16: true, bf16: false
+# A100: swap these
+training:
+  fp16: false
+  bf16: true
+  per_device_train_batch_size: 4   # was 1 on T4
+  gradient_accumulation_steps: 4   # effective batch stays 16, but 4x fewer optimizer steps
+
 # Merge this config after model config to override model-specific defaults.
