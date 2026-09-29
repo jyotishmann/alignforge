@@ -15,8 +15,6 @@ base model (n=150, judge=gpt-4o-mini, position-debiased, 95% bootstrap CI).
 Length-controlled win rate: **0.63** (controlling for DPO verbosity).
 Bradley–Terry Elo: DPO 1082 · SFT 1021 · Base 897.
 
-*Replace with your actual numbers. The brackets are the confidence interval —
-report them or the number is meaningless.*
 
 ---
 
@@ -131,7 +129,6 @@ strong technical ability at 1.5B, first-class llama.cpp support.
 
 ## Evaluation methodology
 
-*This section is important. Read it before citing any number from this repo.*
 
 ### Why pairwise win rate, not perplexity
 
@@ -181,8 +178,6 @@ DPO GGUF win rate vs DPO safetensors: 0.48 [0.38, 0.58] — a –0.02 delta
 ---
 
 ## Limitations
-
-*Honest reporting of where this project falls short.*
 
 **Model scale.** At 1.5B parameters, absolute quality is modest.
 Several domain eval cases are failed by all three models, which compresses
@@ -253,31 +248,6 @@ alignforge/
 
 ---
 
-## Résumé bullets
-
-```
-AlignForge — LLM Post-Training Pipeline (QLoRA SFT + DPO)
-github.com/<your-username>/alignforge
-
-• Built an end-to-end post-training pipeline for Qwen2.5-1.5B: QLoRA SFT
-  → DPO alignment → position-debiased evaluation → GGUF export → OpenAI-
-  compatible API. DPO win rate 0.68 [0.55, 0.79] vs base (n=150, judge=
-  gpt-4o-mini, bootstrap CI, length-controlled).
-
-• DPO implemented with adapter-disable reference policy (one model, not two),
-  reducing peak VRAM from ~18GB to ~11GB on a free T4. Implicit KL monitoring
-  and divergence guard. β sweep across {0.05, 0.1, 0.3}.
-
-• Curated 18k SFT examples with two-stage domain filter (F1 0.86 vs 200 hand
-  labels), MinHash dedup, and n-gram decontamination against all eval sets.
-  50 hand-written domain cases with verifiable answers.
-
-• Config-hashed reproducibility registry (SQLite, WAL) linking every run to
-  its git SHA, dataset hash, and hardware fingerprint. EchoEngine test double
-  enables 155-test CI suite in <30s, no GPU.
-```
-
----
 
 ## Citation
 

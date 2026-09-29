@@ -8,6 +8,19 @@ from alignforge.core.config import AlignForgeConfig, config_hash, load_config
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 
+REPO = Path(__file__).resolve().parents[2]
+SFT_CFG = REPO / "configs/train/sft_qlora.yaml"
+MODEL_CFG = REPO / "configs/model/qwen2_5_1_5b.yaml"
+
+
+def test_model_config_layers_over_training_config() -> None:
+    """--model-config must add model settings without discarding training ones."""
+    train_only = load_config(component_path=SFT_CFG)
+    model_only = load_config(component_path=MODEL_CFG)
+    both = load_config(component_path=SFT_CFG, extra_components=[MODEL_CFG])
+    assert both.sft == train_only.sft  # training hyperparameters survive
+    assert both.model == model_only.model  # model settings applied
+
 
 def test_default_config_validates() -> None:
     """The zero-argument config (all defaults) must pass validation."""

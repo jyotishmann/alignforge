@@ -100,7 +100,7 @@ def _train(
     from alignforge.models.chat_format import get_or_build_format
     from alignforge.models.loading import build_bnb_config, load_base_model, load_tokenizer
     from alignforge.models.lora import build_lora_model
-    from alignforge.train.callbacks import ProbeGenerationCallback, VRAMCallback
+    from alignforge.train.callbacks import ProbeGenerationCallback, VRAMCallback, wrap_callbacks
     from alignforge.train.dataset import (
         get_response_template,
         load_sft_dataset,
@@ -153,7 +153,7 @@ def _train(
         dataset=dataset,
         training_args=training_args,
         response_template=response_template,
-        callbacks=callbacks,
+        callbacks=wrap_callbacks(callbacks),
     )
 
     checkpoint = _find_checkpoint(output_dir / "checkpoints", resume_from)

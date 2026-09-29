@@ -247,11 +247,11 @@ def train_sft(
     # Layer the config: base → model → training component → --set overrides.
     paths = get_paths()
     overrides = set_overrides or []
-    cfg = load_config(component_path=config, overrides=overrides)
-    if model_config:
-        from alignforge.core.config import load_config as _lc
-
-        cfg = _lc(component_path=model_config, overrides=overrides)
+    cfg = load_config(
+        component_path=config,
+        overrides=overrides,
+        extra_components=[model_config] if model_config else [],
+    )
 
     setup_logging(
         level=cfg.logging.level,
@@ -293,7 +293,11 @@ def train_dpo(
     from alignforge.train.dpo_run import run_dpo
 
     paths = get_paths()
-    cfg = load_config(component_path=config, overrides=set_overrides or [])
+    cfg = load_config(
+        component_path=config,
+        overrides=set_overrides or [],
+        extra_components=[model_config] if model_config else [],
+    )
     setup_logging(level=cfg.logging.level, fmt=cfg.logging.format, log_dir=paths.logs_dir)
 
     run_id = run_dpo(
@@ -622,7 +626,11 @@ def export_gguf(
     from alignforge.core.paths import get_paths
     from alignforge.export.gguf import run_export
 
-    cfg = load_config(component_path=config, overrides=set_overrides or [])
+    cfg = load_config(
+        component_path=config,
+        overrides=set_overrides or [],
+        extra_components=[model_config] if model_config else [],
+    )
     paths = get_paths()
     setup_logging(level=cfg.logging.level, fmt=cfg.logging.format, log_dir=paths.logs_dir)
 

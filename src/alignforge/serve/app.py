@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,12 +21,23 @@ def create_app(max_concurrent: int = 4) -> FastAPI:
 
     Called once at process start. Each test can call it independently.
     """
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+        from alignforge.core.registry import get_registry
+        from alignforge.serve.deps import get_engine_registry
+
+        get_registry()  # open the DB connection
+        get_engine_registry()  # initialise engine singletons
+        yield
+
     app = FastAPI(
         title="AlignForge Inference API",
         description="OpenAI-compatible inference for base, SFT, and DPO models.",
         version="0.1.0",
         docs_url="/docs",
         redoc_url=None,
+        lifespan=lifespan,
     )
 
     # Middleware (added in reverse order — last added = outermost).
@@ -44,13 +58,5 @@ def create_app(max_concurrent: int = 4) -> FastAPI:
     app.include_router(compare.router)
     app.include_router(votes.router)
     app.include_router(evals.router)
-
-    @app.on_event("startup")
-    async def _startup() -> None:
-        from alignforge.core.registry import get_registry
-        from alignforge.serve.deps import get_engine_registry
-
-        get_registry()  # open the DB connection
-        get_engine_registry()  # initialise engine singletons
 
     return app

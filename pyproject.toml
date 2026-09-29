@@ -17,6 +17,9 @@ classifiers = [
 ]
 # Version is read from src/alignforge/__init__.py — single source of truth.
 dynamic = ["version"]
+dependencies = [
+    "structlog>=26.1.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/jyotishmann/alignforge"
@@ -56,14 +59,15 @@ data = [
 # Training: QLoRA SFT and DPO. Installed on the GPU box / Colab only.
 train = [
     "torch>=2.3",
-    "transformers>=4.44",
-    "accelerate>=0.33",
-    "peft>=0.12",
-    "trl>=0.10",
+    "transformers>=4.44,<4.46",
+    "accelerate>=0.33,<1.0",
+    "peft>=0.12,<0.13",
+    "trl>=0.10,<0.12",
     "bitsandbytes>=0.43",
     "datasets>=2.19",
     "sentencepiece>=0.2",
 ]
+
 
 # Evaluation: judging, statistics, figures.
 eval = [
@@ -85,7 +89,7 @@ serve = [
 
 # The Gradio frontend. Depends on nothing from train/ or eval/ — see ADR-007.
 ui = [
-    "gradio>=4.40",
+    "gradio>=4.44,<6",
     "httpx>=0.27",
     "plotly>=5.22",
 ]

@@ -125,13 +125,13 @@ def test_audit_flags_known_runtime_bugs(af: ModuleType, tmp_path: Path) -> None:
     train = tmp_path / "src" / "alignforge" / "train"
     train.mkdir(parents=True)
     (train / "callbacks.py").write_text(
-        "def wrap_callbacks(cbs): ...\n" "x = props.total_mem\n" "p = Path('a')\n"
+        "def wrap_callbacks(cbs): ...\nx = props.total_mem\np = Path('a')\n"
     )
     (train / "sft.py").write_text("SFTTrainer(callbacks=callbacks or [])\n")
     levels = sorted(f.level for f in af.audit(tmp_path))
     assert levels.count("FIX") == 3  # total_mem, missing Path import, never wrapped
     (train / "callbacks.py").write_text(
-        "from pathlib import Path\n" "def wrap_callbacks(cbs): ...\n" "x = props.total_memory\n"
+        "from pathlib import Path\ndef wrap_callbacks(cbs): ...\nx = props.total_memory\n"
     )
     (train / "sft.py").write_text("SFTTrainer(callbacks=wrap_callbacks(callbacks or []))\n")
     assert af.audit(tmp_path) == []

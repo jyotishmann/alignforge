@@ -15,9 +15,3 @@ dpo:
   gradient_checkpointing: true
   logging_steps: 10
   save_steps: 100
-
-# T4: fp16: true, bf16: false
-# A100: swap these
-training:
-  fp16: false
-  bf16: true

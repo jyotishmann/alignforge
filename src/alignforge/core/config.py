@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal
 
@@ -227,6 +228,7 @@ def load_config(
     component_path: Path | None = None,
     overrides: list[str] | None = None,
     base_path: Path | None = None,
+    extra_components: Sequence[Path] = (),
 ) -> AlignForgeConfig:
     """Full composition pipeline: base → component → overrides → validate → freeze.
 
@@ -236,6 +238,10 @@ def load_config(
       3. Deep-merge component over base
       4. Apply --set dotted overrides
       5. Validate into the typed Pydantic tree
+
+    extra_components layer on top of component_path, e.g. a model config over a
+    training config. Merging happens on raw YAML, before validation, so schema
+    defaults from one file can never overwrite explicit values from another.
     """
     from alignforge.core.errors import ConfigError
     from alignforge.core.paths import get_paths
@@ -250,18 +256,13 @@ def load_config(
     else:
         base_dict = {}
 
-    # Step 2: component config.
-    component_dict: dict[str, Any] = {}
-    if component_path is not None:
-        if not component_path.exists():
-            raise ConfigError(
-                f"Component config not found: {component_path}", key=str(component_path)
-            )
-        with component_path.open() as f:
-            component_dict = yaml.safe_load(f) or {}
-
-    # Step 3: deep merge.
-    merged = _deep_merge(base_dict, component_dict)
+    # Steps 2-3: component configs, deep-merged in order.
+    merged = base_dict
+    for path in (p for p in (component_path, *extra_components) if p is not None):
+        if not path.exists():
+            raise ConfigError(f"Component config not found: {path}", key=str(path))
+        with path.open() as f:
+            merged = _deep_merge(merged, yaml.safe_load(f) or {})
 
     # Step 4: CLI overrides.
     if overrides:

@@ -37,8 +37,8 @@ def test_full_run_lifecycle(reg: Registry) -> None:
     completed = reg.get_run(run_id)
     assert completed is not None
     assert completed["status"] == "completed"
-    assert "0.312" in run["metrics_json"]
-    assert run["finished_at"] is not None
+    assert "0.312" in completed["metrics_json"]
+    assert completed["finished_at"] is not None
 
 
 def test_fail_run_preserves_notes(reg: Registry) -> None:

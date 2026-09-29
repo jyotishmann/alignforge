@@ -80,7 +80,7 @@ class TestExportDryRun:
         cfg = AlignForgeConfig()
 
         with (
-            patch("alignforge.export.gguf.get_registry", return_value=reg),
+            patch("alignforge.core.registry.get_registry", return_value=reg),
             patch("alignforge.export.gguf.get_paths") as mock_paths,
         ):
             mock_paths.return_value.artifacts_dir = tmp_path
