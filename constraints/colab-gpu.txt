@@ -6,9 +6,8 @@
 #
 # Usage: pip install -e ".[train,data]" -c constraints/colab-gpu.txt
 # `notebooks/_colab.py preflight` verifies these APIs after install.
-transformers==4.44.2
+transformers==4.45.2
 trl==0.11.4
 peft==0.12.0
 accelerate==0.34.2
 bitsandbytes>=0.45.0
-flash-attn>=2.6.0
