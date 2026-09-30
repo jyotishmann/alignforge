@@ -115,7 +115,11 @@ def _verify_collator(
     tokenizer: Any,
 ) -> None:
     """Run the collator on the first example and check labels are not all -100."""
-    sample = [train_dataset[0]]
+
+    # SFTTrainer tokenizes the text column inside its constructor, but this check
+    # runs before that, so tokenize the sample here the same way the trainer will.
+    encoded = tokenizer(train_dataset[0]["text"], truncation=False, padding=False)
+    sample = [{"input_ids": encoded["input_ids"], "attention_mask": encoded["attention_mask"]}]
     batch = collator(sample)
     labels = batch["labels"][0].tolist()
     real_count = sum(1 for lbl in labels if lbl != -100)

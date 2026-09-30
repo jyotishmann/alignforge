@@ -73,7 +73,7 @@ def load_base_model(cfg: AlignForgeConfig, bnb_config: Any) -> Any:
     if hw.bf16_supported and find_spec("flash_attn") is not None:
         attn_impl = "flash_attention_2"
     else:
-        log.info("flash_attention_not_installed", fallback="eager")
+        log.info("flash_attention_not_installed", fallback="sdpa")
 
     log.info(
         "loading_base_model",
