@@ -10,18 +10,26 @@ import json
 import random
 from pathlib import Path
 
+from datasets import Dataset
+from huggingface_hub import hf_hub_download
+
 
 def build_mtbench_sub(
     output_path: Path,
-    n: int = 40,
+    n: int = 30,
     categories: list[str] | None = None,
     seed: int = 42,
 ) -> None:
     """Download MT-Bench questions and extract a subset."""
     from datasets import load_dataset
 
-    # MT-Bench questions are in the HF dataset 'HuggingFaceH4/mt_bench_prompts'.
-    ds = load_dataset("HuggingFaceH4/mt_bench_prompts", split="train")
+    # lighteval/mt-bench keeps the original FastChat schema (question_id, category, turns).
+    ds = load_dataset("lighteval/mt-bench", split="train")
+    missing = {"question_id", "category", "turns"} - set(ds.column_names)
+    if missing:
+        raise SystemExit(
+            f"MT-Bench schema changed: missing {sorted(missing)}; got {ds.column_names}"
+        )
     categories = categories or ["coding", "reasoning", "extraction"]
 
     random.seed(seed)
@@ -52,8 +60,10 @@ def build_mtbench_sub(
     # Sample to target size.
     if len(cases) > n:
         cases = random.sample(cases, n)
-    elif len(cases) < n:
-        print(f"Warning: only {len(cases)} MT-Bench cases in categories {categories}.")
+    if not cases:
+        raise SystemExit(f"MT-Bench: 0 cases matched {categories}.")
+    if len(cases) < n:
+        print(f"Note: {len(cases)} MT-Bench cases available in {categories} (target {n}).")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w") as f:
@@ -68,10 +78,13 @@ def build_alpacaeval_sub(
     seed: int = 42,
 ) -> None:
     """Sample AlpacaEval instructions as a general instruction-following test."""
-    from datasets import load_dataset
 
-    # tatsu-lab/alpaca_eval contains 805 instructions with reference outputs.
-    ds = load_dataset("tatsu-lab/alpaca_eval", "alpaca_eval", split="eval")
+    # datasets>=4 dropped script-based loaders; read the raw JSON instead
+    # (same rows and columns the old loading script produced).
+    raw = hf_hub_download(
+        repo_id="tatsu-lab/alpaca_eval", filename="alpaca_eval.json", repo_type="dataset"
+    )
+    ds = Dataset.from_list(json.loads(Path(raw).read_text(encoding="utf-8")))
 
     random.seed(seed)
     all_rows = list(ds)
