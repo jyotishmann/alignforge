@@ -67,7 +67,7 @@ def build_dataset(
 
     # Threshold tuning from hand labels, if available.
     filter_eval: dict[str, Any] = {}
-    threshold = 0.45
+    threshold = cfg.data.domain_threshold
     if labels_path and labels_path.exists():
         with labels_path.open() as f:
             labels_data = json.load(f)

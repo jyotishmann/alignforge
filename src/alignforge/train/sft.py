@@ -42,6 +42,7 @@ def build_training_args(
         max_grad_norm=cfg.sft.max_grad_norm,
         optim=cfg.sft.optim,
         gradient_checkpointing=cfg.sft.gradient_checkpointing,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         fp16=use_fp16,
         bf16=use_bf16,
         logging_steps=cfg.sft.logging_steps,
@@ -55,7 +56,7 @@ def build_training_args(
         greater_is_better=False,
         report_to="none",  # no wandb/tensorboard by default
         dataloader_num_workers=0,  # 0 is safer on Colab (fork issues)
-        remove_unused_columns=False,  # we manage columns ourselves
+        remove_unused_columns=True,
         # group_by_length=True,  # batch similar lengths → less padding waste
         ddp_find_unused_parameters=False,  # not DDP but avoids a warning
         seed=cfg.project.seed,

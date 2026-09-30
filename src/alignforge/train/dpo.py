@@ -43,6 +43,7 @@ def build_dpo_training_args(
         warmup_ratio=cfg.dpo.warmup_ratio,
         optim=cfg.dpo.optim,
         gradient_checkpointing=cfg.dpo.gradient_checkpointing,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         fp16=use_fp16,
         bf16=use_bf16,
         logging_steps=cfg.dpo.logging_steps,
@@ -54,7 +55,7 @@ def build_dpo_training_args(
         load_best_model_at_end=False,  # DPO: take the final checkpoint, not best-loss
         report_to="none",
         dataloader_num_workers=0,
-        remove_unused_columns=False,
+        remove_unused_columns=True,
         # group_by_length=False,        # must be off: paired examples need stable lengths
         seed=cfg.project.seed,
     )

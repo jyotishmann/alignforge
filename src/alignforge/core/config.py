@@ -148,6 +148,7 @@ class DataConfig(_Strict):
     dedup_jaccard: float = Field(default=0.85, ge=0.5, le=1.0)
     decontaminate: bool = True
     decontaminate_ngram: int = Field(default=13, ge=5, le=25)
+    domain_threshold: float = Field(default=0.45, ge=0.0, le=1.0)
 
 
 # ── Root ────────────────────────────────────────────────────────────────

@@ -8,6 +8,6 @@ sft:
   logging_steps: 1
   save_steps: 5
   eval_steps: 5
-  gradient_checkpointing: false       # off for CPU testing
+  gradient_checkpointing: true       # off for CPU testing
   packing: false
   completion_only: true

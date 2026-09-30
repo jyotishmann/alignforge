@@ -69,7 +69,7 @@ def load_base_model(cfg: AlignForgeConfig, bnb_config: Any) -> Any:
     torch_dtype = torch.float16 if compute_dtype_str == "float16" else torch.bfloat16
 
     # Flash Attention 2 requires Ampere+ and a compatible build.
-    attn_impl = "eager"
+    attn_impl = "sdpa"
     if hw.bf16_supported and find_spec("flash_attn") is not None:
         attn_impl = "flash_attention_2"
     else:
