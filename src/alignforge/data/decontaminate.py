@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import structlog
 
 log = structlog.get_logger()
 
+_WORD = re.compile(r"\w+")
+
 
 def _ngrams(text: str, n: int) -> set[str]:
-    """Extract character-level n-grams from lowercased text."""
-    text = text.lower().strip()
-    return {text[i : i + n] for i in range(len(text) - n + 1)} if len(text) >= n else set()
+    """Word-level n-grams over lowercased tokens (the GPT-3 13-gram convention).
+
+    Text shorter than n words is indexed whole, so an exact copy of a short
+    eval prompt is still caught.
+    """
+    tokens = _WORD.findall(text.lower())
+    if len(tokens) < n:
+        return {" ".join(tokens)} if tokens else set()
+    return {" ".join(tokens[i : i + n]) for i in range(len(tokens) - n + 1)}
 
 
 def build_eval_ngram_index(eval_prompts: list[str], n: int = 13) -> set[str]:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from alignforge.data.decontaminate import decontaminate
+from alignforge.data.decontaminate import build_eval_ngram_index, decontaminate, is_contaminated
 from alignforge.data.dedup import exact_dedup
 from alignforge.data.schemas import SFTExample
 
@@ -49,3 +49,14 @@ class TestDecontamination:
         examples = [_make("Short text")]
         _, dropped = decontaminate(examples, eval_prompts, n=13)
         assert dropped == 0
+
+    def test_decontamination_is_word_level(self) -> None:
+        """Shared short phrases are not contamination; a copied eval prompt is."""
+        evals = [
+            "Write a Python function that reverses a linked list in place without recursion please."
+        ]
+        index = build_eval_ngram_index(evals, n=13)
+        assert not is_contaminated(
+            "Write a Python program to sort the following list.", index, n=13
+        )
+        assert is_contaminated(evals[0], index, n=13)
