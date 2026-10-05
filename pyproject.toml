@@ -155,9 +155,10 @@ module = [
     "transformers.*", "peft.*", "trl.*", "datasets.*", "bitsandbytes.*",
     "torch.*", "accelerate.*", "sentence_transformers.*", "datasketch.*",
     "gradio.*", "plotly.*", "sklearn.*", "scipy.*", "matplotlib.*",
-    "flash_attn", "flash_attn.*", "structlog.*",
+    "flash_attn", "flash_attn.*", "structlog.*", "pandas.*",
 ]
 ignore_missing_imports = true
+follow_imports= "skip"  # treat ML libraries as untyped whether or not they're installed
 
 [[tool.mypy.overrides]]
 module = [

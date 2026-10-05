@@ -114,7 +114,7 @@ def make_local_judge(
         torch_dtype=torch.float16,
         device_map="auto",
     )
-    model.eval()  # type: ignore[no-untyped-call]
+    model.eval()
 
     def _call(system_prompt: str, user_prompt: str) -> str:
         messages = [
@@ -125,7 +125,7 @@ def make_local_judge(
         inputs = tok(text, return_tensors="pt", truncation=True, max_length=3000)
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
         with torch.no_grad():
-            out = model.generate(  # type: ignore[misc]
+            out = model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
                 do_sample=False,

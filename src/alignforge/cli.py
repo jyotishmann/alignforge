@@ -883,7 +883,7 @@ def serve_ui(
     typer.echo(f"Connecting to API at {api_base}")
 
     demo = create_ui(api_base=api_base)
-    demo.launch(  # type: ignore[call-arg]
+    demo.launch(
         server_port=port,
         share=share,
         show_api=False,
@@ -946,7 +946,7 @@ def serve_all(
     signal.signal(signal.SIGTERM, _shutdown)
 
     try:
-        demo.launch(  # type: ignore[call-arg]
+        demo.launch(
             server_port=ui_port,
             share=share,
             show_api=False,

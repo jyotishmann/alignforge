@@ -30,7 +30,7 @@ def build_training_args(
     use_fp16 = hw.device == "cuda" and not hw.bf16_supported
     use_bf16 = hw.device == "cuda" and hw.bf16_supported
 
-    args = TrainingArguments(  # type: ignore[call-arg]
+    args = TrainingArguments(
         output_dir=str(output_dir),
         num_train_epochs=cfg.sft.num_train_epochs,
         per_device_train_batch_size=cfg.sft.per_device_train_batch_size,

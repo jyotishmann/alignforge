@@ -198,7 +198,7 @@ def wrap_callbacks(callbacks: list[Any]) -> list[Any]:
     """Wrap our plain-class callbacks in the HuggingFace TrainerCallback interface."""
     from transformers import TrainerCallback
 
-    class _Adapter(TrainerCallback):
+    class _Adapter(TrainerCallback):  # type: ignore[misc]  # TrainerCallback is untyped
         def __init__(self, inner: Any) -> None:
             self._inner = inner
 

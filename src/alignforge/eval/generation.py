@@ -238,7 +238,7 @@ def _load_eval_model(ref: str, chat_format: Any) -> tuple[Any, Any]:
             torch_dtype=torch.float16,
             device_map="auto",
         )
-        model.eval()  # type: ignore[no-untyped-call]
+        model.eval()
 
     return model, tokenizer
 

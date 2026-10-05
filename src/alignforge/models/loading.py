@@ -42,7 +42,7 @@ def build_bnb_config(cfg: AlignForgeConfig) -> Any:
         bf16_available=hw.bf16_supported,
     )
 
-    return BitsAndBytesConfig(  # type: ignore[no-untyped-call]
+    return BitsAndBytesConfig(
         load_in_4bit=cfg.quant.load_in_4bit,
         bnb_4bit_quant_type=cfg.quant.bnb_4bit_quant_type,
         bnb_4bit_use_double_quant=cfg.quant.bnb_4bit_use_double_quant,

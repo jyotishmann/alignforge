@@ -1,11 +1,20 @@
+import time
+
 import httpx
 import pytest
 
 from alignforge.eval import judge_client
 
 
-def _resp(status: int, **kw: object) -> httpx.Response:
-    return httpx.Response(status, request=httpx.Request("POST", "http://test"), **kw)
+def _resp(
+    status: int,
+    *,
+    headers: dict[str, str] | None = None,
+    json: dict[str, object] | None = None,
+) -> httpx.Response:
+    return httpx.Response(
+        status, headers=headers, json=json, request=httpx.Request("POST", "http://test")
+    )
 
 
 def test_openai_judge_retries_429_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -23,7 +32,7 @@ def test_openai_judge_retries_429_then_succeeds(monkeypatch: pytest.MonkeyPatch)
         return next(replies)
 
     monkeypatch.setattr(httpx, "post", fake_post)
-    monkeypatch.setattr(judge_client.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(time, "sleep", lambda _s: None)
 
     judge = judge_client.make_openai_judge(base_url="https://api.groq.com/openai/v1/")
     assert judge("sys", "user") == "A"
