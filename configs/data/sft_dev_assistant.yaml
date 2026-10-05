@@ -4,6 +4,7 @@ data:
   kind: sft
   sources:
     - alpaca_cleaned
+    - code_alpaca
     - dolly_15k
     # - oasst1     # uncomment when tree-join loader is complete
   max_seq_len: 1024

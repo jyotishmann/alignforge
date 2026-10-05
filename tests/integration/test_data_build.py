@@ -28,7 +28,7 @@ def test_data_build_produces_artifact(tmp_path: Path, monkeypatch: pytest.Monkey
     cfg = load_config(
         overrides=[
             "data.name=test_build",
-            "data.sources=[alpaca_cleaned]",
+            "data.sources=[alpaca_cleaned, code_alpaca]",
             "data.decontaminate=false",
         ]
     )

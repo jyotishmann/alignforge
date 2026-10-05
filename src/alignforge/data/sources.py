@@ -28,6 +28,16 @@ ALPACA_CLEANED = SourceSpec(
     name="alpaca_cleaned",
     hf_id="yahma/alpaca-cleaned",
     kind="sft",
+    revision="12567cabf869d7c92e573c7c783905fc160e9639",
+    field_map={"instruction": "instruction", "input": "input", "response": "output"},
+)
+
+CODE_ALPACA = SourceSpec(
+    name="code_alpaca",
+    hf_id="sahil2801/CodeAlpaca-20k",
+    kind="sft",
+    revision="152bb5e9a29651266b018106053980070a0521a1",
+    # Same instruction/input/output schema as Alpaca; ~20k programming tasks.
     field_map={"instruction": "instruction", "input": "input", "response": "output"},
 )
 
@@ -35,6 +45,7 @@ DOLLY_15K = SourceSpec(
     name="dolly_15k",
     hf_id="databricks/databricks-dolly-15k",
     kind="sft",
+    revision="bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a",
     field_map={"instruction": "instruction", "input": "context", "response": "response"},
     categories_keep=[
         "closed_qa",
@@ -50,6 +61,7 @@ OASST1 = SourceSpec(
     name="oasst1",
     hf_id="OpenAssistant/oasst1",
     kind="sft",
+    revision="fdf72ae0827c1cda404aff25b6603abec9e3399b",
     # OASST has a tree structure; the loader handles flattening.
     field_map={"instruction": "parent_text", "response": "text"},
 )
@@ -75,6 +87,11 @@ ANTHROPIC_HH = SourceSpec(
 
 # ── Registries ──────────────────────────────────────────────────────────
 
-SFT_SOURCES = {"alpaca_cleaned": ALPACA_CLEANED, "dolly_15k": DOLLY_15K, "oasst1": OASST1}
+SFT_SOURCES = {
+    "alpaca_cleaned": ALPACA_CLEANED,
+    "code_alpaca": CODE_ALPACA,
+    "dolly_15k": DOLLY_15K,
+    "oasst1": OASST1,
+}
 PREF_SOURCES = {"ultrafeedback": ULTRAFEEDBACK, "anthropic_hh": ANTHROPIC_HH}
 ALL_SOURCES = {**SFT_SOURCES, **PREF_SOURCES}

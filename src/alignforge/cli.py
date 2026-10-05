@@ -461,6 +461,11 @@ def eval_judge(
         "echo", "--backend", "-b", help="Judge backend: openai|local|echo."
     ),
     judge_model: str = typer.Option("gpt-4o-mini", "--judge-model"),
+    judge_base_url: str = typer.Option(
+        "https://api.openai.com/v1",
+        "--judge-base-url",
+        help="OpenAI-compatible API root, e.g. https://api.groq.com/openai/v1.",
+    ),
     responses_dir: Path | None = typer.Option(None, "--responses-dir"),
     judgements_dir: Path | None = typer.Option(None, "--judgements-dir"),
     limit: int | None = typer.Option(None, "--limit", "-n", min=1),
@@ -475,12 +480,20 @@ def eval_judge(
     model_ids = [m.strip() for m in models.split(",")]
     suite_names = [s.strip() for s in suites.split(",")] if suites else list(SUITE_REGISTRY.keys())
 
-    typer.echo(f"Judge backend: {backend}" + (f" ({judge_model})" if backend == "openai" else ""))
+    typer.echo(
+        f"Judge backend: {backend}"
+        + (f" ({judge_model} @ {judge_base_url})" if backend == "openai" else "")
+    )
     typer.echo(f"Models: {model_ids}")
     typer.echo(f"Suites: {suite_names}")
     typer.echo(f"Pairs: {len(model_ids) * (len(model_ids) - 1) // 2} (each judged twice per case)")
 
-    judge_fn = get_judge_fn(backend, model=judge_model if backend == "openai" else None)
+    # Only the OpenAI-compatible backend takes model/base_url; the others have
+    # different signatures (make_local_judge uses model_name), so pass nothing.
+    judge_kwargs: dict[str, Any] = (
+        {"model": judge_model, "base_url": judge_base_url} if backend == "openai" else {}
+    )
+    judge_fn = get_judge_fn(backend, **judge_kwargs)
 
     rdir = responses_dir or paths.evals_dir / "responses"
     jdir = judgements_dir or paths.evals_dir / "judgements"

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import random
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -15,16 +17,21 @@ JudgeFn = Callable[[str, str], str]  # (system_prompt, user_prompt) -> response_
 
 # ── OpenAI API backend ────────────────────────────────────────────────────
 
+_RETRYABLE_STATUS = {408, 409, 429, 500, 502, 503, 504}
+
 
 def make_openai_judge(
     model: str = "gpt-4o-mini",
     temperature: float = 0.0,
-    max_retries: int = 3,
+    base_url: str = "https://api.openai.com/v1",
+    max_retries: int = 6,
 ) -> JudgeFn:
-    """Returns a judge function backed by the OpenAI API.
+    """Judge backed by any OpenAI-compatible chat-completions API (OpenAI, Groq, ...).
 
-    Requires ALIGNFORGE_JUDGE_API_KEY environment variable.
-    Uses temperature=0 for deterministic verdicts.
+    Requires ALIGNFORGE_JUDGE_API_KEY (or OPENAI_API_KEY). Uses temperature=0 for
+    deterministic verdicts. Rate limits and server errors are retried with
+    exponential backoff (honouring Retry-After); other client errors such as a
+    bad key or unknown model fail fast, since retrying cannot fix them.
     """
     api_key = os.environ.get("ALIGNFORGE_JUDGE_API_KEY") or os.environ.get("OPENAI_API_KEY")
     if not api_key:
@@ -32,11 +39,21 @@ def make_openai_judge(
 
     import httpx
 
+    url = f"{base_url.rstrip('/')}/chat/completions"
+
+    def _backoff(attempt: int, retry_after: str | None) -> float:
+        try:
+            hinted = float(retry_after) if retry_after else 0.0
+        except ValueError:  # Retry-After may be an HTTP date; fall back to exponential
+            hinted = 0.0
+        return max(hinted, min(60.0, 2.0**attempt)) + random.uniform(0.0, 1.0)
+
     def _call(system_prompt: str, user_prompt: str) -> str:
         for attempt in range(max_retries):
+            last = attempt == max_retries - 1
             try:
                 r = httpx.post(
-                    "https://api.openai.com/v1/chat/completions",
+                    url,
                     headers={"Authorization": f"Bearer {api_key}"},
                     json={
                         "model": model,
@@ -47,15 +64,27 @@ def make_openai_judge(
                         "temperature": temperature,
                         "max_tokens": 512,
                     },
-                    timeout=30.0,
+                    timeout=60.0,
                 )
-                r.raise_for_status()
-                return str(r.json()["choices"][0]["message"]["content"])
-            except Exception as exc:
-                log.warning("judge_api_error", attempt=attempt, error=str(exc))
-                if attempt == max_retries - 1:
+            except httpx.TransportError as exc:  # network failure or timeout
+                if last:
                     raise
-        return ""
+                wait = _backoff(attempt, None)
+                log.warning(
+                    "judge_api_error", attempt=attempt, error=str(exc), wait_s=round(wait, 1)
+                )
+                time.sleep(wait)
+                continue
+            if r.status_code in _RETRYABLE_STATUS and not last:
+                wait = _backoff(attempt, r.headers.get("retry-after"))
+                log.warning(
+                    "judge_api_retry", attempt=attempt, status=r.status_code, wait_s=round(wait, 1)
+                )
+                time.sleep(wait)
+                continue
+            r.raise_for_status()
+            return str(r.json()["choices"][0]["message"]["content"])
+        raise RuntimeError("judge retry loop exited without a result")
 
     return _call
 
