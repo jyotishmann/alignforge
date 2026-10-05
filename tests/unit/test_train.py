@@ -112,3 +112,19 @@ class TestResponseTemplate:
         # For ChatML, the response template should be the assistant turn start.
         assert "<|im_end|>" in template
         assert "<|im_start|>assistant" in template
+
+
+def test_dpo_training_args_are_a_dpo_config(tmp_path: Path) -> None:
+    """DPOTrainer needs one DPOConfig carrying both training and DPO settings."""
+    trl = pytest.importorskip("trl")
+    from alignforge.core.config import load_config
+    from alignforge.train.dpo import build_dpo_training_args
+
+    root = Path(__file__).resolve().parents[2]
+    cfg = load_config(component_path=root / "configs/train/dpo_qlora.yaml")
+    args = build_dpo_training_args(cfg, output_dir=tmp_path)
+
+    assert isinstance(args, trl.DPOConfig)
+    assert args.beta == cfg.dpo.beta
+    assert args.max_length == cfg.dpo.max_length
+    assert args.remove_unused_columns is False

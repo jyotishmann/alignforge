@@ -20,20 +20,21 @@ def build_dpo_training_args(
     cfg: AlignForgeConfig,
     output_dir: Path,
 ) -> Any:
-    """Build TrainingArguments for DPO.
+    """Build the DPOConfig: TRL's TrainingArguments subclass that carries both the
+    general training settings and the DPO-specific ones (beta, lengths, loss).
 
     Key differences from SFT:
     - LR one OOM lower (DPO diverges at SFT rates)
     - Larger warmup ratio (DPO is less stable early)
     - No group_by_length (DPOTrainer needs matched prompt/chosen/rejected lengths)
     """
-    from transformers import TrainingArguments
+    from trl import DPOConfig
 
     hw = probe_hardware()
     use_fp16 = hw.device == "cuda" and not hw.bf16_supported
     use_bf16 = hw.device == "cuda" and hw.bf16_supported
 
-    args = TrainingArguments(  # type: ignore[call-arg]
+    args = DPOConfig(
         output_dir=str(output_dir),
         num_train_epochs=cfg.dpo.num_train_epochs,
         per_device_train_batch_size=cfg.dpo.per_device_train_batch_size,
@@ -55,9 +56,21 @@ def build_dpo_training_args(
         load_best_model_at_end=False,  # DPO: take the final checkpoint, not best-loss
         report_to="none",
         dataloader_num_workers=0,
-        remove_unused_columns=True,
-        # group_by_length=False,        # must be off: paired examples need stable lengths
+        # DPO's collator reads the raw prompt/chosen/rejected columns, so keep them.
+        remove_unused_columns=False,
         seed=cfg.project.seed,
+        # ── DPO-specific ──────────────────────────────────────────────────
+        beta=cfg.dpo.beta,
+        # "sigmoid" is the standard DPO loss (Rafailov et al. 2023);
+        # "ipo" (Gheshlaghi Azar et al. 2023) and "hinge" are alternatives.
+        loss_type="sigmoid",
+        max_prompt_length=cfg.dpo.max_prompt_length,
+        max_length=cfg.dpo.max_length,
+        label_pad_token_id=-100,  # padding never contributes to the loss
+        is_encoder_decoder=False,
+        # Reference log-probs come from the same model with the adapter disabled,
+        # computed per batch rather than in a precompute pass.
+        precompute_ref_log_probs=False,
     )
 
     log.info(
@@ -81,6 +94,9 @@ def build_dpo_trainer(
 ) -> Any:
     """Build DPOTrainer with adapter-disable reference policy.
 
+    training_args is the DPOConfig from build_dpo_training_args: in TRL 0.11 it
+    holds both the general training settings and beta/lengths/loss_type.
+
     ref_model=None is the key: TRL uses disable_adapter() / enable_adapter()
     on the PEFT model to compute reference log-probs from the same object.
     This halves VRAM vs a two-model setup. Valid only when the SFT adapter
@@ -88,22 +104,7 @@ def build_dpo_trainer(
 
     See 00_MASTER.md top of Part 06 for the full explanation.
     """
-    from trl import DPOConfig, DPOTrainer
-
-    dpo_config = DPOConfig(
-        beta=cfg.dpo.beta,
-        max_prompt_length=cfg.dpo.max_prompt_length,
-        max_length=cfg.dpo.max_length,
-        # loss_type="sigmoid" is the standard DPO loss (Rafailov et al. 2023).
-        # "ipo" (Gheshlaghi Azar et al. 2023) and "hinge" are alternatives.
-        loss_type="sigmoid",
-        # Compute the reference log-probs from the same model with adapter disabled.
-        is_encoder_decoder=False,
-        # label_pad_token_id: use -100 so padding tokens don't contribute to loss.
-        label_pad_token_id=-100,
-        # The reference model is NONE — adapter-disable trick.
-        precompute_ref_log_probs=False,
-    )
+    from trl import DPOTrainer
 
     trainer = DPOTrainer(
         model=model,
@@ -113,7 +114,6 @@ def build_dpo_trainer(
         eval_dataset=dataset["validation"],
         tokenizer=tokenizer,
         callbacks=callbacks or [],
-        **dpo_config.__dict__,  # spread DPOConfig fields into DPOTrainer
     )
 
     log.info(
