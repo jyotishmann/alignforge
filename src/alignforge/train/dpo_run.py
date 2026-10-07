@@ -173,7 +173,7 @@ def _train_dpo(
     log.info(
         "dpo_final_metrics",
         run_id=run_id,
-        mean_implicit_kl=round(dpo_metrics_cb.mean_kl(), 4),
+        mean_implicit_kl=None if (m := dpo_metrics_cb.mean_kl()) is None else round(m, 4),
     )
     return adapter_path
 

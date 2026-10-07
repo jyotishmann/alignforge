@@ -21,15 +21,23 @@ class TestDPOMetricsCallback:
         cb.on_log(None, state, None, logs=logs)
 
         # KL = (0.4 + 0.2) / (2 * 0.1) = 3.0
-        assert abs(cb.mean_kl() - 3.0) < 0.01
+        kl = cb.mean_kl()
+        assert kl is not None and abs(kl - 3.0) < 0.01
 
     def test_no_rewards_no_kl(self) -> None:
-        """If reward keys are absent, mean_kl stays 0."""
+        """If reward keys are absent, there is no KL data: mean_kl is None, not 0."""
         from alignforge.train.dpo_callbacks import DPOMetricsCallback
 
         cb = DPOMetricsCallback(beta=0.1)
         cb.on_log(None, MagicMock(), None, logs={"loss": 0.5})
-        assert cb.mean_kl() == 0.0
+        assert cb.mean_kl() is None
+
+    def test_mean_kl_is_none_without_logged_steps(self) -> None:
+        """No logged steps means 'no data', not 'zero drift'."""
+        from alignforge.train.dpo_callbacks import DPOMetricsCallback
+
+        cb = DPOMetricsCallback(beta=0.1)
+        assert cb.mean_kl() is None
 
     def test_high_kl_emits_warning(self, caplog: Any) -> None:
         """KL above threshold should trigger a warning log."""

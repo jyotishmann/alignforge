@@ -65,4 +65,4 @@ def create_ui(api_base: str = "http://localhost:8000") -> gr.Blocks:
         status_banner = gr.Markdown("")
         demo.load(fn=on_load, inputs=[session_state], outputs=[session_state, status_banner])
 
-    return demo  # type: ignore[no-any-return]
+    return demo

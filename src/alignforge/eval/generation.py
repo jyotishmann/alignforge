@@ -180,10 +180,37 @@ def _make_transformers_generator(
     return _generate
 
 
+def _eval_dtype() -> Any:
+    """bf16 where supported (matches training on A100), fp16 on T4, fp32 on CPU."""
+    import torch
+
+    from alignforge.core.hardware import probe_hardware
+
+    hw = probe_hardware()
+    if hw.device != "cuda":
+        return torch.float32
+    return torch.bfloat16 if hw.bf16_supported else torch.float16
+
+
+def _load_full_model(name_or_path: str) -> tuple[Any, Any]:
+    """Load a full model + tokenizer from a local dir or a Hugging Face Hub ID.
+
+    Base, SFT and DPO all load through here (SFT/DPO add their adapter on top),
+    so the three differ only by the adapter: same weights, same dtype.
+    """
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(name_or_path)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained(
+        name_or_path, torch_dtype=_eval_dtype(), device_map="auto"
+    )
+    return model, tokenizer
+
+
 def _load_eval_model(ref: str, chat_format: Any) -> tuple[Any, Any]:
     """Load model+tokenizer for evaluation. Handles run_id and direct paths."""
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
 
     from alignforge.core.paths import get_paths
     from alignforge.core.registry import get_registry
@@ -206,40 +233,24 @@ def _load_eval_model(ref: str, chat_format: Any) -> tuple[Any, Any]:
                     break
 
     if not p.exists():
+        # Not a local path, run id or artifact: treat "org/name" as a Hub model ID.
+        if ref.count("/") == 1 and not ref.startswith((".", "/", "~")):
+            log.info("loading_eval_model_from_hub", ref=ref)
+            model, tokenizer = _load_full_model(ref)
+            model.eval()
+            return model, tokenizer
         raise FileNotFoundError(f"Cannot find model weights for ref: {ref!r}")
 
-    # Check if it's a PEFT adapter or a full model.
-    is_adapter = (p / "adapter_config.json").exists()
-
-    if is_adapter:
+    if (p / "adapter_config.json").exists():
         from peft import PeftModel
 
-        # Need the base model name from the adapter config.
         with (p / "adapter_config.json").open() as f:
-            adapter_cfg = json.load(f)
-        base_name = adapter_cfg.get("base_model_name_or_path", "")
-        tokenizer = AutoTokenizer.from_pretrained(base_name)
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-        base = AutoModelForCausalLM.from_pretrained(
-            base_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
+            base_name = json.load(f).get("base_model_name_or_path", "")
+        base, tokenizer = _load_full_model(base_name)
         model = PeftModel.from_pretrained(base, str(p))
-        model.eval()
     else:
-        # Full model (merged).
-        tokenizer = AutoTokenizer.from_pretrained(str(p))
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-        model = AutoModelForCausalLM.from_pretrained(
-            str(p),
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
-        model.eval()
-
+        model, tokenizer = _load_full_model(str(p))  # merged full model on disk
+    model.eval()
     return model, tokenizer
 
 

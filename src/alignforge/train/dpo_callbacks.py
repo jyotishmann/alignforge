@@ -75,9 +75,9 @@ class DPOMetricsCallback:
                 ),
             )
 
-    def mean_kl(self) -> float:
-        """Mean implicit KL over all logged steps."""
-        return sum(self._step_klvals) / len(self._step_klvals) if self._step_klvals else 0.0
+    def mean_kl(self) -> float | None:
+        """Mean over logged steps, or None if logging never fired (not 'zero drift')."""
+        return sum(self._step_klvals) / len(self._step_klvals) if self._step_klvals else None
 
 
 class DivergenceGuardCallback:
