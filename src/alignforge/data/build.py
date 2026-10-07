@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,23 @@ from alignforge.data.sources import PREF_SOURCES, SFT_SOURCES
 from alignforge.data.writer import write_dataset_artifact
 
 log = structlog.get_logger()
+
+
+def _publish_artifact(staged: Path, root: Path, content_hash: str) -> Path:
+    """Move a staged build to root/<hash>/ and point root/latest_hash at it.
+
+    Each hash directory is written once and never modified, so a recorded
+    content hash always resolves to exactly the data it names. latest_hash is a
+    plain text file (not a symlink, which needs admin rights on Windows).
+    """
+    final = root / content_hash
+    if final.exists():
+        shutil.rmtree(staged)  # identical content is already published
+    else:
+        staged.rename(final)
+    (root / "latest_hash").write_text(content_hash + "\n", encoding="utf-8")
+    log.info("dataset_published", path=str(final), content_hash=content_hash)
+    return final
 
 
 def build_dataset(
@@ -138,13 +156,17 @@ def build_dataset(
 
     funnel["final"] = len(records)
 
-    # ── Step 9: Write ───────────────────────────────────────────────────
+    # ── Step 9: Write (staged), then publish immutably under the content hash ──
     output_dir = paths.data_dir / "processed" / cfg.data.name
     source_info = [{"name": s.name, "hf_id": s.hf_id, "split": s.split} for s in specs]
 
-    artifact_dir, content_hash = write_dataset_artifact(
+    staging = output_dir / ".staging"
+    if staging.exists():
+        shutil.rmtree(staging)  # leftover from an interrupted build
+
+    staged_dir, content_hash = write_dataset_artifact(
         records=records,
-        output_dir=output_dir / "latest",
+        output_dir=staging,
         name=cfg.data.name,
         kind=kind,
         val_ratio=cfg.data.val_ratio,
@@ -156,6 +178,7 @@ def build_dataset(
         sources=source_info,
         seed=cfg.project.seed,
     )
+    artifact_dir = _publish_artifact(staged_dir, output_dir, content_hash)
 
     # ── Step 10: Register ───────────────────────────────────────────────
     from alignforge.core.registry import get_registry

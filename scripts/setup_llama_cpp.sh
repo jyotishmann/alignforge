@@ -54,7 +54,7 @@ fi
 
 # Install Python conversion dependencies.
 echo "Installing llama.cpp Python requirements..."
-pip install -q -r "$LLAMA_DIR/requirements.txt"
+pip install -q -e "$LLAMA_DIR/gguf-py"
 
 echo ""
 echo "=== llama.cpp setup complete ==="

@@ -114,7 +114,7 @@ def _train(
     chat_format = get_or_build_format(cfg, tokenizer)
 
     # 2. Load and format the dataset.
-    artifact_dir = _resolve_dataset(paths, dataset_hash, cfg)
+    artifact_dir = resolve_dataset(paths, dataset_hash)
     dataset = load_sft_dataset(
         artifact_dir=artifact_dir,
         tokenizer=tokenizer,
@@ -166,31 +166,37 @@ def _train(
     return adapter_path
 
 
-def _resolve_dataset(paths: Any, dataset_hash: str, cfg: AlignForgeConfig) -> Path:
-    """Find the dataset artifact directory by its content hash."""
+def resolve_dataset(paths: Any, dataset_hash: str) -> Path:
+    """Find the dataset artifact for a content hash and verify it is that data.
+
+    Used by SFT and DPO. A registry path is trusted only if its manifest carries
+    the requested hash; rows pointing at an overwritten directory fail
+    verification and fall through to a scan of the immutable
+    processed/<name>/<hash>/ layout. Raises rather than train on other data.
+    """
     import json
 
+    from alignforge.core.errors import DataError
     from alignforge.core.registry import get_registry
 
-    reg = get_registry()
-    row = reg.get_dataset(dataset_hash)
+    candidates: list[Path] = []
+    row = get_registry().get_dataset(dataset_hash)
     if row:
-        return Path(row["path"])
+        candidates.append(Path(row["path"]))
+    # Immutable layout; the glob covers every dataset name (SFT and preference).
+    candidates.extend(sorted((paths.data_dir / "processed").glob(f"*/{dataset_hash}")))
 
-    # Fallback: scan the data directory for a manifest with matching hash.
-    base = paths.data_dir / "processed" / cfg.data.name
-    if base.exists():
-        for child in base.iterdir():
-            manifest = child / "manifest.json"
-            if manifest.exists():
-                with manifest.open() as f:
-                    m = json.load(f)
-                if m.get("content_hash") == dataset_hash:
-                    return Path(child)
-    from alignforge.core.errors import DataError
+    for candidate in candidates:
+        manifest = candidate / "manifest.json"
+        if not manifest.is_file():
+            continue
+        with manifest.open(encoding="utf-8") as f:
+            if json.load(f).get("content_hash") == dataset_hash:
+                return candidate
 
     raise DataError(
-        f"Dataset with hash {dataset_hash!r} not found. Run `alignforge data build` to produce it.",
+        f"No artifact with content hash {dataset_hash!r} (registry path missing or "
+        "overwritten). Rebuild with `alignforge data build`.",
         source=dataset_hash,
     )
 

@@ -344,6 +344,16 @@ def run_generation(
 
         summary[model_id] = total_completed
         log.info("model_generation_done", model_id=model_id, total=total_completed)
+        # Free this model before loading the next: otherwise each one stays on the
+        # GPU and a T4 runs out of memory by the third model.
+        del generator
+        import gc
+
+        import torch
+
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     return summary
 

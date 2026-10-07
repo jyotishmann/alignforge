@@ -128,3 +128,26 @@ def test_dpo_training_args_are_a_dpo_config(tmp_path: Path) -> None:
     assert args.beta == cfg.dpo.beta
     assert args.max_length == cfg.dpo.max_length
     assert args.remove_unused_columns is False
+
+
+def test_wrap_callbacks_forwards_on_log() -> None:
+    """on_log must reach our callbacks (the DPO KL metric and divergence guard need it)."""
+    pytest.importorskip("transformers")
+    from transformers import TrainerCallback
+
+    from alignforge.train.callbacks import wrap_callbacks
+
+    class Recorder:
+        def __init__(self) -> None:
+            self.logs: list[object] = []
+
+        def on_log(self, args: object, state: object, control: object, **kw: object) -> None:
+            self.logs.append(kw.get("logs"))
+
+    rec = Recorder()
+    (adapter,) = wrap_callbacks([rec])
+    control = object()
+    assert isinstance(adapter, TrainerCallback)
+    assert adapter.on_log(None, None, control, logs={"loss": 1.0}) is control
+    assert rec.logs == [{"loss": 1.0}]
+    assert adapter.on_train_begin(None, None, control) is control  # unimplemented: no-op

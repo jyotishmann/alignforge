@@ -108,6 +108,7 @@ def export_env(layout: Layout) -> dict[str, str]:
         "TOKENIZERS_PARALLELISM": "false",
         "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
         "PYTHONUNBUFFERED": "1",
+        "USE_TF": "0",
     }
     os.environ.update(env)
     return env

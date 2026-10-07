@@ -179,33 +179,10 @@ def _train_dpo(
 
 
 def _resolve_pref_dataset(paths: Any, pref_hash: str, cfg: AlignForgeConfig) -> Path:
-    """Find the preference dataset directory by content hash."""
-    import json
+    """Find the preference dataset directory by content hash (verified; see resolve_dataset)."""
+    from alignforge.train.run import resolve_dataset
 
-    from alignforge.core.registry import get_registry
-
-    reg = get_registry()
-    row = reg.get_dataset(pref_hash)
-    if row:
-        return Path(row["path"])
-
-    base = paths.data_dir / "processed" / cfg.data.name
-    if base.exists():
-        for child in base.iterdir():
-            manifest = child / "manifest.json"
-            if manifest.exists():
-                with manifest.open() as f:
-                    m = json.load(f)
-                if m.get("content_hash") == pref_hash:
-                    return Path(child)
-
-    from alignforge.core.errors import DataError
-
-    raise DataError(
-        f"Preference dataset with hash {pref_hash!r} not found. "
-        f"Run `alignforge data build --config configs/data/dpo_dev_assistant.yaml`.",
-        source=pref_hash,
-    )
+    return resolve_dataset(paths, pref_hash)
 
 
 def _resolve_sft_adapter(paths: Any, sft_run_id: str) -> Path:

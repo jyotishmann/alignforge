@@ -62,7 +62,7 @@ def test_ollama_template_parity() -> None:
     """
     from transformers import AutoTokenizer
 
-    from alignforge.models.chat_format import ChatFormat
+    from alignforge.models.chat_format import ChatFormat, default_system_prompt
 
     tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-1.5B-Instruct", trust_remote_code=False)
     fmt = ChatFormat.from_tokenizer(tokenizer)
@@ -71,6 +71,8 @@ def test_ollama_template_parity() -> None:
     user_prompt = "How do I sort a Python dictionary by value?"
     messages = [{"role": "user", "content": user_prompt}]
 
+    system = default_system_prompt(tokenizer)
+
     # HF reference: the prompt that the model would receive at inference.
     hf_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
@@ -78,7 +80,10 @@ def test_ollama_template_parity() -> None:
     # The Ollama template (no system) should render to:
     #   <|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n
     stop = fmt.stop_tokens[0]
-    expected_ollama_render = f"<|im_start|>user\n{user_prompt}{stop}\n<|im_start|>assistant\n"
+    system_block = f"<|im_start|>system\n{system}{stop}\n" if system else ""
+    expected_ollama_render = (
+        f"{system_block}<|im_start|>user\n{user_prompt}{stop}\n<|im_start|>assistant\n"
+    )
 
     assert hf_prompt == expected_ollama_render, (
         "HF prompt does not match the expected Ollama rendering.\n"

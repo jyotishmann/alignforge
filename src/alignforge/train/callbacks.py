@@ -195,31 +195,34 @@ class DriveSyncCallback:
 
 
 def wrap_callbacks(callbacks: list[Any]) -> list[Any]:
-    """Wrap our plain-class callbacks in the HuggingFace TrainerCallback interface."""
+    """Wrap our plain-class callbacks in the HuggingFace TrainerCallback interface.
+
+    Every event TrainerCallback defines (on_log, on_train_begin, ...) is forwarded,
+    discovered from the installed transformers, so no event is silently dropped.
+    The old adapter forwarded only four events; on_log was missing, so the DPO KL
+    metric and divergence guard never received a single log entry.
+    """
     from transformers import TrainerCallback
+
+    events = [name for name in dir(TrainerCallback) if name.startswith("on_")]
+
+    def _forward(event: str) -> Any:
+        def method(self: Any, args: Any, state: Any, control: Any, **kw: Any) -> Any:
+            handler = getattr(self._inner, event, None)
+            if handler is not None:
+                handler(args, state, control, **kw)
+            return control
+
+        method.__name__ = event
+        return method
 
     class _Adapter(TrainerCallback):  # type: ignore[misc]  # TrainerCallback is untyped
         def __init__(self, inner: Any) -> None:
             self._inner = inner
 
-        def on_step_begin(self, args: Any, state: Any, control: Any, **kw: Any) -> Any:
-            if hasattr(self._inner, "on_step_begin"):
-                self._inner.on_step_begin(args, state, control, **kw)
-            return control
+    for event in events:
+        setattr(_Adapter, event, _forward(event))
 
-        def on_step_end(self, args: Any, state: Any, control: Any, **kw: Any) -> Any:
-            if hasattr(self._inner, "on_step_end"):
-                self._inner.on_step_end(args, state, control, **kw)
-            return control
-
-        def on_evaluate(self, args: Any, state: Any, control: Any, **kw: Any) -> Any:
-            if hasattr(self._inner, "on_evaluate"):
-                self._inner.on_evaluate(args, state, control, **kw)
-            return control
-
-        def on_save(self, args: Any, state: Any, control: Any, **kw: Any) -> Any:
-            if hasattr(self._inner, "on_save"):
-                self._inner.on_save(args, state, control, **kw)
-            return control
-
-    return [_Adapter(cb) for cb in callbacks]
+    # A distinct subclass per callback, named after it, so HF doesn't warn about
+    # duplicate callbacks and stack traces say which callback is involved.
+    return [type(f"{type(cb).__name__}Adapter", (_Adapter,), {})(cb) for cb in callbacks]

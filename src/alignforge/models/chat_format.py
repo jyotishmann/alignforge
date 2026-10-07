@@ -176,3 +176,18 @@ def get_or_build_format(cfg: Any, tokenizer: Any) -> ChatFormat:
         fmt = ChatFormat.from_tokenizer(tokenizer)
         _formats[key] = fmt
     return _formats[key]
+
+
+def default_system_prompt(tokenizer: Any) -> str | None:
+    """The system prompt the chat template injects when a conversation has none.
+
+    Qwen2.5 adds "You are Qwen, created by Alibaba Cloud..." automatically, so the
+    training and eval prompts contain it. The Ollama Modelfile must set the same
+    default via SYSTEM, or the exported model sees different prompts than the
+    evaluated one. Returns None if the template adds no default (ChatML only).
+    """
+    rendered = tokenizer.apply_chat_template([{"role": "user", "content": "x"}], tokenize=False)
+    head, end = "<|im_start|>system\n", "<|im_end|>"
+    if not rendered.startswith(head):
+        return None
+    return str(rendered[len(head) : rendered.index(end)])
