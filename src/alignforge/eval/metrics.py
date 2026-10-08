@@ -340,7 +340,12 @@ def compute_all_metrics(
             continue
 
         # Win rate + CI.
-        wr = bootstrap_ci(pair_judgements, model_a, model_b, n_resamples=n_resamples)
+        # Counts (wins/losses/ties, needed by Bradley-Terry below) + bootstrap CI.
+        wr = {
+            **compute_win_rate(pair_judgements, model_a, model_b),
+            **bootstrap_ci(pair_judgements, model_a, model_b, n_resamples=n_resamples),
+        }
+
         # Position bias.
         pb_rate = position_bias_rate(pair_judgements)
 
