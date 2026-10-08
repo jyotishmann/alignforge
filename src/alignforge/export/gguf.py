@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -286,9 +287,17 @@ def run_export(
         artifacts["modelfile"] = str(modelfile_path)
 
         # Step 5: ollama create.
-        tag = exporter.ollama_create(modelfile_path, dpo_run_id)
-        reg.record_artifact(dpo_run_id, "ollama_tag", tag)
-        artifacts["ollama_tag"] = tag
+        # Step 5: ollama create (only where Ollama is installed, i.e. the serving machine).
+        if shutil.which("ollama"):
+            tag = exporter.ollama_create(modelfile_path, dpo_run_id)
+            reg.record_artifact(dpo_run_id, "ollama_tag", tag)
+            artifacts["ollama_tag"] = tag
+        else:
+            log.info(
+                "ollama_create_skipped",
+                reason="ollama not installed",
+                hint=f"on the serving machine: ollama create <tag> -f {modelfile_path}",
+            )
 
         # Step 6: Smoke test.
         if not skip_smoke_test:

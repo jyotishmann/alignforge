@@ -122,25 +122,24 @@ def _train_dpo(
         limit=limit,
     )
 
-    # 3. Load the SFT adapter checkpoint as the starting point.
-    #    DPO will add a new LoRA adapter on top. With ref_model=None,
-    #    the adapter-off state IS π_ref (the SFT policy).
+    # 3. Load the SFT adapter twice: the "default" adapter is the policy (trained by
+    #    DPO); "reference" is a frozen copy of the same SFT weights and serves as π_ref.
+    #    TRL switches to it for the reference forward pass (DPOConfig.ref_adapter_name).
+    #    Disabling adapters instead would make π_ref the *base* model, not SFT.
     sft_adapter_path = _resolve_sft_adapter(paths, sft_run_id)
     log.info("loading_sft_adapter", path=str(sft_adapter_path))
 
     bnb_config = build_bnb_config(cfg)
     base_model = load_base_model(cfg, bnb_config)
 
-    # Load SFT adapter weights into the base model.
     from peft import PeftModel
 
-    model = PeftModel.from_pretrained(
-        base_model,
-        str(sft_adapter_path),
-        is_trainable=True,  # make these weights trainable for DPO
-    )
+    model = PeftModel.from_pretrained(base_model, str(sft_adapter_path), is_trainable=True)
+    model.load_adapter(str(sft_adapter_path), adapter_name="reference", is_trainable=False)
+    model.set_adapter("default")  # train the policy; "reference" stays frozen
     log.info(
         "sft_adapter_loaded",
+        adapters=sorted(model.peft_config),
         trainable_params=sum(p.numel() for p in model.parameters() if p.requires_grad),
     )
 
@@ -163,7 +162,7 @@ def _train_dpo(
     )
 
     trainer.train()
-
+    model.delete_adapter("reference")  # only the trained policy is the artifact
     # 6. Save the DPO adapter.
     adapter_path = output_dir / "adapter"
     trainer.model.save_pretrained(str(adapter_path))

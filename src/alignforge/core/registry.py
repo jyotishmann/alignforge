@@ -163,9 +163,15 @@ class Registry:
 
     @staticmethod
     def make_run_id(kind: str, config_hash: str) -> str:
-        """Generate a human-readable run ID: {kind}-{date}-{hash_prefix}."""
-        date = datetime.now(UTC).strftime("%Y%m%d")
-        return f"{kind}-{date}-{config_hash[:4]}"
+        """Unique, sortable run id: <kind>-<UTC date>-<UTC time>-<config hash prefix>.
+
+        Second resolution, so two runs of the same config on the same day (e.g. a
+        re-run after a code fix) never collide.
+        """
+        from datetime import datetime
+
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        return f"{kind}-{stamp}-{config_hash[:4]}"
 
     def create_run(
         self,

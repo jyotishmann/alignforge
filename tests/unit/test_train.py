@@ -128,6 +128,8 @@ def test_dpo_training_args_are_a_dpo_config(tmp_path: Path) -> None:
     assert args.beta == cfg.dpo.beta
     assert args.max_length == cfg.dpo.max_length
     assert args.remove_unused_columns is False
+    assert args.model_adapter_name == "default"
+    assert args.ref_adapter_name == "reference"
 
 
 def test_wrap_callbacks_forwards_on_log() -> None:

@@ -68,8 +68,10 @@ def build_dpo_training_args(
         max_length=cfg.dpo.max_length,
         label_pad_token_id=-100,  # padding never contributes to the loss
         is_encoder_decoder=False,
-        # Reference log-probs come from the same model with the adapter disabled,
-        # computed per batch rather than in a precompute pass.
+        # π_ref = the frozen "reference" adapter (a copy of the SFT weights), not
+        # disabled adapters, which would give the base model. One base model, two adapters.
+        model_adapter_name="default",
+        ref_adapter_name="reference",
         precompute_ref_log_probs=False,
     )
 
