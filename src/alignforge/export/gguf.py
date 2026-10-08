@@ -286,26 +286,35 @@ def run_export(
         modelfile_path = exporter.write_modelfile(q_path, dpo_run_id, tokenizer)
         artifacts["modelfile"] = str(modelfile_path)
 
-        # Step 5: ollama create.
         # Step 5: ollama create (only where Ollama is installed, i.e. the serving machine).
+        # The tag is deterministic, so it is known even when Ollama isn't here.
+        expected_tag = f"{cfg.export.ollama_tag_prefix}-dpo:v{cfg.export.ollama_version}"
         if shutil.which("ollama"):
             tag = exporter.ollama_create(modelfile_path, dpo_run_id)
             reg.record_artifact(dpo_run_id, "ollama_tag", tag)
             artifacts["ollama_tag"] = tag
+            ollama_ready = True
         else:
+            tag = expected_tag
+            artifacts["ollama_tag_pending"] = tag
+            ollama_ready = False
             log.info(
                 "ollama_create_skipped",
                 reason="ollama not installed",
-                hint=f"on the serving machine: ollama create <tag> -f {modelfile_path}",
+                hint=f"on the serving machine: ollama create {tag} -f {modelfile_path}",
             )
 
-        # Step 6: Smoke test.
-        if not skip_smoke_test:
+        # Step 6: Smoke test (talks to the Ollama model, so only where it exists).
+        if skip_smoke_test:
+            pass
+        elif not ollama_ready:
+            log.info("smoke_test_skipped", reason="no ollama model on this machine")
+        else:
             response = exporter.smoke_test(tag)
             artifacts["smoke_test_response"] = response[:200]
 
-        # Step 7: Register for serving.
-        run_record = reg.get_run(dpo_run_id)  # noqa: F841
+        # Step 7: Register for serving. Published even when Ollama is absent here: the
+        # serving machine creates the model under this same tag (see the hint above).
         display = f"DPO GGUF ({cfg.export.quant_type})"
         reg.publish_model(
             model_id="dpo_gguf",
@@ -315,7 +324,9 @@ def run_export(
             run_id=dpo_run_id,
             sort_order=4,
         )
-        log.info("export_complete", run_id=dpo_run_id, artifacts=artifacts)
+        log.info(
+            "export_complete", run_id=dpo_run_id, ollama_ready=ollama_ready, artifacts=artifacts
+        )
         return artifacts
 
     except Exception as exc:
