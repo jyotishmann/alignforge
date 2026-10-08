@@ -4,7 +4,8 @@ data:
   kind: preference
   sources:
     - ultrafeedback
-    - anthropic_hh
+    - py_dpo
+    # - anthropic_hh   # general harmlessness chat; adds noise for a dev-assistant domain
   max_seq_len: 1024
   val_ratio: 0.05
   dedup_jaccard: 0.85

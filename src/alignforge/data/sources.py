@@ -20,6 +20,9 @@ class SourceSpec:
     categories_keep: list[str] = field(default_factory=list)
     # If set, only keep rows where the "category" field is in this list.
     category_field: str = "category"
+    message_lists: bool = False
+    # True if chosen/rejected are chat message lists ([{"role", "content"}, ...])
+    # rather than plain strings, as in ultrafeedback_binarized-style datasets.
 
 
 # ── SFT sources ─────────────────────────────────────────────────────────
@@ -74,6 +77,18 @@ ULTRAFEEDBACK = SourceSpec(
     kind="preference",
     split="train_prefs",
     field_map={"prompt": "prompt", "chosen": "chosen", "rejected": "rejected"},
+    message_lists=True,
+)
+
+PY_DPO = SourceSpec(
+    name="py_dpo",
+    hf_id="Columbia-NLP/DPO-py-dpo-v0.1",
+    kind="preference",
+    split="train",
+    # Same schema as ultrafeedback_binarized: prompt + chosen/rejected message lists.
+    # Chosen = tested Python solutions; rejected = weaker-model generations.
+    field_map={"prompt": "prompt", "chosen": "chosen", "rejected": "rejected"},
+    message_lists=True,
 )
 
 ANTHROPIC_HH = SourceSpec(
@@ -93,5 +108,5 @@ SFT_SOURCES = {
     "dolly_15k": DOLLY_15K,
     "oasst1": OASST1,
 }
-PREF_SOURCES = {"ultrafeedback": ULTRAFEEDBACK, "anthropic_hh": ANTHROPIC_HH}
+PREF_SOURCES = {"ultrafeedback": ULTRAFEEDBACK, "py_dpo": PY_DPO, "anthropic_hh": ANTHROPIC_HH}
 ALL_SOURCES = {**SFT_SOURCES, **PREF_SOURCES}

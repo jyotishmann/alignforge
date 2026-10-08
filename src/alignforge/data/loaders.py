@@ -106,7 +106,7 @@ def load_source(
                 quarantined.append(QuarantineRecord(raw=raw, source=spec.name, error=str(exc)))
                 continue
 
-        if spec.name == "ultrafeedback":
+        if spec.message_lists:  # chat-message-list format (ultrafeedback, py_dpo, ...)
             raw_chosen = raw.get("chosen", "")
             raw_rejected = raw.get("rejected", "")
             raw = {
