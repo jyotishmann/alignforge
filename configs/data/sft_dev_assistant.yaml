@@ -12,3 +12,4 @@ data:
   dedup_jaccard: 0.85
   decontaminate: true
   decontaminate_ngram: 13
+  domain_threshold: 0.25   # lowest value whose newly admitted rows stayed on-topic (sweep 2026-10-08)
